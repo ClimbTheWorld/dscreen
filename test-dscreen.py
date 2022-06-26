@@ -145,7 +145,7 @@ def getStationboard():
             logging.info(stationboard[len(stationboard)-1])
         return stationboard
     else:
-        print("error")
+        print("SBB request error <> 200")
 
 
 #print(response.text)
