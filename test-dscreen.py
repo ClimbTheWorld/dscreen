@@ -12,6 +12,7 @@ if os.path.exists(libdir):
 import logging
 import pprint
 #import pyyaml
+from datetime import datetime, timedelta
 # from waveshare_epd import epd5in83b_V2
 import time
 from PIL import Image, ImageDraw, ImageFont
@@ -89,7 +90,65 @@ def combineLayers(background, foreground):
 
 
 logging.basicConfig(level=logging.DEBUG)
+import json
+import requests
+# Wassertemperaturen
+## Linth
+staos = {"Linth":2104, "ReussLuzern":2152, "ReussSeedorf":2056}
+for k,v in staos.items():
+    stao = k + ": "
+    url = "https://api.existenz.ch/apiv1/hydro/latest?locations=" + str(v)
+    payload={}
+    headers = {}
+    response = requests.request("GET", url, headers=headers, data=payload)
+    if response.status_code == 200:
+        print(response.content)
+        testjson = json.loads(response.text)
+        for p in testjson["payload"]:
+            stao += str(p["par"]) + ":" + str(p["val"]) + ", "
+    else:
+        print("error")
+    print(stao[:-2])
 
+# ÖV
+## Himmelrichstrasse
+def getStationboard():
+    url = "http://transport.opendata.ch/v1/stationboard?station=Kriens, Himmelrichstrasse&limit=3&id=8589714"
+
+    payload={}
+    headers = {}
+
+    response = requests.request("GET", url, headers=headers, data=payload)
+
+    if response.status_code == 200:
+        fahrplan = json.loads(response.text)
+        stationboard = []
+        #fahrplan_from['stationboard'][3]['stop']['station']['name'],
+        # fahrplan_to['stationboard'][3]['to'],
+        # when[''stationboard'][3]['[departure']['departure']
+        numOfDepartures = 0
+        if len(fahrplan['stationboard']) >= 4:
+            numOfDepartures = 4
+        else:
+            numOfDepartures = len(fahrplan['stationboard'])
+        for i in range(numOfDepartures):
+            now = datetime.now()
+            #now.ts
+            timestampOfDeparture = datetime.fromtimestamp(fahrplan['stationboard'][i]['stop']['departureTimestamp'])
+            dfrom =fahrplan['stationboard'][i]['stop']['station']['name'] + " nach "
+            dto = fahrplan['stationboard'][i]['to'] + " am: "
+            dwhen = fahrplan['stationboard'][i]['stop']['departure']
+            #din = timedelta(now, now)
+            stationboard.append(fahrplan['stationboard'][i]['stop']['station']['name'].split(", ")[1][:1] + "..." + "-" + \
+                            fahrplan['stationboard'][i]['to'].split(", ")[1] + ": " + \
+                    fahrplan['stationboard'][i]['stop']['departure'][12:19])
+            logging.info(stationboard[len(stationboard)-1])
+        return stationboard
+    else:
+        print("error")
+
+
+#print(response.text)
 
 class ContentHandler():
     content = []
@@ -213,9 +272,16 @@ c2 = content.appendContent(
      "color": "black"})
 c3 = content.appendContent(
     {"col": 2, "row": 1, "blocktitle": "GEBURI", "content": "GEBURI", "type": "title", "color": "black"})
+stationboardlist = getStationboard()
+c4 = content.appendContent({"col": 1, "row": 3, "blocktitle": "FAHRPLAN", "content": "FAHRPLAN", "type": "title"})
+busnr = 0
+for bus in stationboardlist:
+    content.appendContent({"col": 1, "row": 1, "blocktitle": "FAHRPLAN", "content": str(bus), "type": "bulletpoint", "color": "black"})
 rowheight = 24
+cnt = 0
 for c in content.content:
-    drawblack.text((epd.coloffset[c['col']-1], c['row']*rowheight), c['content'], font=font24, fill=0)
+    drawblack.text((epd.coloffset[c['col']-1], cnt*rowheight), c['content'], font=font24, fill=0)
+    cnt=cnt+1
 LRYimage = convertWhitePxToTransparent(LRYimage)
 v_d_img = combineLayers(LBlackimage, LRYimage)
 v_d_img.show()
@@ -230,8 +296,10 @@ HBlackimage = Image.new('1', (epd.width, epd.height), 255)
 HRYimage = Image.new('1', (epd.width, epd.height), 255)
 drawblack = ImageDraw.Draw(HBlackimage)
 drawry = ImageDraw.Draw(HRYimage)
+cnt = 1
 for c in content.content:
-    drawblack.text((epd.coloffset[c['col']-1], c['row']*rowheight), c['content'], font=font24, fill=0)
+    drawblack.text((epd.coloffset[c['col']-1], cnt*rowheight), c['content'], font=font24, fill=0)
+    cnt = cnt + 1
 HRYimage = convertWhitePxToTransparent(HRYimage)
 h_d_img = combineLayers(HBlackimage, HRYimage)
 h_d_img.show()
