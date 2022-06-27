@@ -5,10 +5,12 @@ https://www.waveshare.com/w/upload/8/89/5.83inch-e-paper-hat-user-manual-en.pdf
 https://www.waveshare.com/wiki/5.83inch_e-Paper_HAT_(B)  
 
 ## content
-** Wassertemperaturen (Murg, LuzernReuss, LuzernSee, SeedorfReuss)
+** Wassertemperaturen (Murg, LuzernReuss, LuzernSee, SeedorfReuss) done
 ** Bielihüüssolar
-** SBB ab Himmelrich
+** SBB ab Himmelrich DONE
 ** Kalender Lukas
 ** Kalender Allgemein
 ** Menü für heute / Einkaufsliste (Knopf für das Senden an Email/Kalendereintrag)
 ** Regenjacke?
+** number of clients in last 24h
+** phile stats

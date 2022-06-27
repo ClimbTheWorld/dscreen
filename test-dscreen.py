@@ -1,3 +1,4 @@
+from __future__ import print_function
 #!/usr/bin/python
 # -*- coding:utf-8 -*-
 import sys
@@ -109,7 +110,17 @@ for k,v in staos.items():
     else:
         print("error")
     print(stao[:-2])
-
+# PiHole stats request
+def getPiHole(command, host, port):
+    import socket
+    s = socket.socket()
+    s.connect((host, port))
+    str = input(command)
+    s.send(str.encode());
+    #if (str == "Bye" or str == "bye"):
+    #    break
+    print("N:", s.recv(1024).decode())
+    s.close()
 # ÖV
 ## Himmelrichstrasse
 def getStationboard():
@@ -147,6 +158,72 @@ def getStationboard():
     else:
         print("SBB request error <> 200")
 
+# Calendar
+#HB
+def getCalendarEvents():
+    import datetime
+    import os.path
+
+    from google.auth.transport.requests import Request
+    from google.oauth2.credentials import Credentials
+    from google_auth_oauthlib.flow import InstalledAppFlow
+    from googleapiclient.discovery import build
+    from googleapiclient.errors import HttpError
+
+    # If modifying these scopes, delete the file token.json.
+    SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
+
+
+    """Shows basic usage of the Google Calendar API for gmail.com-calendards (not G Suite).
+    Prints the start and name of the next 10 events on the user's calendar.
+    1. Create service account
+    2. Grant access to Calendar API for service account
+    3. Create key for service account (as credentials.json) and put it into base folder named
+    3. Add CalendarId, in code below, which you want to access
+        How do I find a calendar ID?
+        Obtain your Google Calendar's ID:
+        In the Google Calendar interface, locate the "My calendars" area on the left.
+        Hover over the calendar you need and click the downward arrow.
+        A menu will appear. Click "Calendar settings".
+        In the "Calendar Address" section of the screen, you will see your Calendar ID.
+    4. Add service account email to calendar which you want to have access to. Go to gmail.com>Calendar>>Settings>Settings for my calendars>Choose calendar>Calendar settings>Share with specific people>Add service account email here
+    """
+    # The file token.json stores the user's access and refresh tokens, and is
+    # created automatically when the authorization flow completes for the first
+    # time.
+    from google.oauth2 import service_account
+    SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
+    SERVICE_ACCOUNT_FILE = 'credentials.json'
+    from google.cloud import storage
+
+    credentials = service_account.Credentials.from_service_account_file(
+            SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    try:
+        service = build('calendar', 'v3', credentials=credentials)
+
+        # Call the Calendar API
+        now = datetime.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
+        print('Getting the upcoming 10 events')
+        events_result = service.events().list(calendarId='lukaskempf@gmail.com', timeMin=now,
+                                            maxResults=10, singleEvents=True,
+                                            orderBy='startTime').execute()
+        events = events_result.get('items', [])
+
+        if not events:
+            print('No upcoming events found.')
+            return
+
+        # Prints the start and name of the next 10 events
+        eventlist = []
+        for event in events:
+            start = event['start'].get('dateTime', event['start'].get('date'))
+            print(start, event['summary'])
+            eventlist.append(start+" "+ event['summary'])
+
+
+    except HttpError as error:
+        print('An error occurred: %s' % error)
+    return eventlist
 
 #print(response.text)
 
@@ -219,7 +296,7 @@ logging.info("epd5in83b_V2 Demo")
 logging.info("Drawing")
 logging.info(picdir)
 font24 = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 24)
-font24 = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 18)
+ont24 = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 18)
 
 # Block oben links
 drawblack.text((2, 0), 'HEUTE', font=font24, fill=0)
@@ -267,6 +344,10 @@ drawry = ImageDraw.Draw(LRYimage)
 
 c1 = content.appendContent(
     {"col": 1, "row": 1, "blocktitle": "HEUTE", "content": "HEUTE", "type": "title", "color": "black"})
+calendarEvents = getCalendarEvents()
+for event in calendarEvents:
+    content.appendContent({"col": 1, "row": 1, "blocktitle": "HEUTE", "content": str(event), "type": "bulletpoint", "color": "black"})
+
 c2 = content.appendContent(
     {"col": 1, "row": 2, "blocktitle": "HEUTE", "content": "Post eingeschrieben abholen", "type": "bulletpoint",
      "color": "black"})
@@ -277,6 +358,7 @@ c4 = content.appendContent({"col": 1, "row": 3, "blocktitle": "FAHRPLAN", "conte
 busnr = 0
 for bus in stationboardlist:
     content.appendContent({"col": 1, "row": 1, "blocktitle": "FAHRPLAN", "content": str(bus), "type": "bulletpoint", "color": "black"})
+piholestats = getPiHole(">stats", "127.0.0.1", 4711)
 rowheight = 24
 cnt = 0
 for c in content.content:
