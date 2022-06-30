@@ -12,6 +12,7 @@ if os.path.exists(libdir):
     sys.path.append(libdir)
 import logging
 import pprint
+import base64
 #import pyyaml
 from datetime import datetime, timedelta
 # from waveshare_epd import epd5in83b_V2
@@ -111,7 +112,20 @@ for k,v in staos.items():
         print("error")
     print(stao[:-2])
 # PiHole stats request
-def getPiHole(command, host, port):
+def getPiHole(host):
+    url = host + "/admin/api.php"
+
+    payload = {}
+    headers = {}
+
+    response = requests.request("GET", url, headers=headers, data=payload)
+    if response.status_code == 200:
+        stats = json.loads(response.text)
+    else:
+        return "api error with status_code:"+response.status_code
+    return stats
+
+def getPiHoleSocket(command, host, port):
     import socket
     s = socket.socket()
     s.connect((host, port))
@@ -123,8 +137,8 @@ def getPiHole(command, host, port):
     s.close()
 # ÖV
 ## Himmelrichstrasse
-def getStationboard():
-    url = "http://transport.opendata.ch/v1/stationboard?station=Kriens, Himmelrichstrasse&limit=3&id=8589714"
+def getStationboard(station, id):
+    url = "http://transport.opendata.ch/v1/stationboard?station="+station+"&limit=3&id="+str(id)
 
     payload={}
     headers = {}
@@ -157,6 +171,90 @@ def getStationboard():
         return stationboard
     else:
         print("SBB request error <> 200")
+
+# Wasser SeenFlüsse
+"""
+ReussSeedorf: 2152
+ReussLuzern: 2056
+LimmatHardbrück: 2099
+LinthWeesen: 2104
+WalenseeMurg: 2118"""
+waterfun = {"ReussSeedorf":2152, "ReussLuzern":2056, "LimmatHardbrücke":2099, "LinthWeesen":2104, "Murg":2118}
+def getWaterfun():
+    import requests
+
+    url = "https://api.existenz.ch/apiv1/hydro/latest?locations="
+    hotspots = []
+    for loc, id in waterfun.items():
+
+        payload={}
+        headers = {}
+
+        response = requests.request("GET", url + str(id), headers=headers, data=payload)
+
+        data = json.loads(response.text)
+        logging.info(data)
+        hotspot = loc + ": (T,H):" + "(" 
+        for i in range(len(data['payload'])):
+            hotspot += data['payload'][i]['par'] + ":" + str(data['payload'][i]['val']) + ")"
+        logging.info(hotspot)
+        hotspots.append(hotspot)
+    return hotspots
+
+# Meteo Forecast https://developer.srgssr.ch/apis/srf-weather/docs
+""" 
+Kriens: 47.0330,8.2791
+Luzern: 47.0384,8.3135
+Mols: 47.1120,9.2810
+8057: 47.4001,8.5415
+"""
+def getMeteoForecast(geolocId):
+    url = "https://api.srgssr.ch/srf-meteo/forecast/" + str(geolocId)
+    token = ""
+    tries = 0
+    token = getMeteoToken()
+    payload = {}
+    headers = {
+    'geolocationId': '',
+    'Authorization': 'Bearer vyzjrhkA2bYst3A4vpmxSMeHpyhy'
+    }
+
+    response = requests.request("GET", url, headers=headers, data=payload)
+    while(response.status_code != 200 and tries < 2):
+        
+
+        """ Error codes
+        400	Invalid request
+        401	Invalid or expired access token
+        404	Resource not found"""
+        tries = tries + 1
+        if(response.status_code == 202 or response.status_code ==401):
+            # create new token
+            token = getMeteoToken()
+        else:
+            pass
+    data = json.loads(response.text)
+    rainPossibility = data
+    return rainPossibility
+
+def getMeteoToken():
+    url = "https://api.srgssr.ch/oauth/v1/accesstoken?grant_type=client_credentials"
+    consumerKey = ""
+    base64enc = base64.b64encode('data to be encoded'.encode('ascii'))
+    payload = {}
+    headers = {
+        'Authorization': 'Basic aGZvNUFxRkgydlRNVjQ5cHNUZ2hsNFFJaHNHV21oYko6NTNab0JKMkxyTE04YWJYcw==',
+        'Cache-Control': 'no-cache',
+        'Content-Length': '0',
+        'Postman-Token': '24264e32-2de0-f1e3-f3f8-eab014bb6d76'
+    }
+
+    response = requests.request("POST", url, headers=headers, data=payload)
+
+    print(response.text)
+    token = json.loads(response.text)
+    return token['access_token']
+
 
 # Calendar
 #HB
@@ -346,19 +444,35 @@ c1 = content.appendContent(
     {"col": 1, "row": 1, "blocktitle": "HEUTE", "content": "HEUTE", "type": "title", "color": "black"})
 calendarEvents = getCalendarEvents()
 for event in calendarEvents:
-    content.appendContent({"col": 1, "row": 1, "blocktitle": "HEUTE", "content": str(event), "type": "bulletpoint", "color": "black"})
+    text = event[:16]+event[19:]
+    content.appendContent({"col": 1, "row": 1, "blocktitle": "HEUTE", "content": str(text), "type": "bulletpoint", "color": "black"})
 
 c2 = content.appendContent(
     {"col": 1, "row": 2, "blocktitle": "HEUTE", "content": "Post eingeschrieben abholen", "type": "bulletpoint",
      "color": "black"})
 c3 = content.appendContent(
     {"col": 2, "row": 1, "blocktitle": "GEBURI", "content": "GEBURI", "type": "title", "color": "black"})
-stationboardlist = getStationboard()
+hotspots = getWaterfun()
+c38 = content.appendContent(
+            {"col": 2, "row": 1, "blocktitle": "Water", "content": "Water", "type": "title", "color": "black"})
+for hotspot in hotspots:
+    c38c = content.appendContent(
+            {"col": 2, "row": 1, "blocktitle": "Water", "content": hotspot, "type": "bulletpoint", "color": "black"})
+    
+stationboardlist = getStationboard("Kriens, Himmelrichstrasse", 8589714)
 c4 = content.appendContent({"col": 1, "row": 3, "blocktitle": "FAHRPLAN", "content": "FAHRPLAN", "type": "title"})
+# Forecast of weather
+areas = {"Denise1":"47.4001,8.5415","Denise2":""}
+for name, geolocId in areas.items():
+    forecast = getMeteoForecast(geolocId)
+    logging.info(forecast)
 busnr = 0
 for bus in stationboardlist:
     content.appendContent({"col": 1, "row": 1, "blocktitle": "FAHRPLAN", "content": str(bus), "type": "bulletpoint", "color": "black"})
-piholestats = getPiHole(">stats", "127.0.0.1", 4711)
+piholestats = getPiHole("http://127.0.0.1")
+content.appendContent({"col":2,"row":1, "blocktitle": "NETZWERK", "content": "NETZWERK","type:":"title", "color":"black"})
+content.appendContent({"col":2,"row":1, "blocktitle": "NETZWERK", "content": "PiHoleStatus: " + piholestats['status'],"type:":"radiobutton", "color": "black"})
+content.appendContent({"col": 2, "row": 1, "blocktitle": "NETZWERK", "content": "ActClients/24h: " + "", "type": "bulletpoint", "color": "black"})
 rowheight = 24
 cnt = 0
 for c in content.content:
