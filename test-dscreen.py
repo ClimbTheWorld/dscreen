@@ -3,22 +3,36 @@ from __future__ import print_function
 # -*- coding:utf-8 -*-
 import sys
 import os
+from warnings import catch_warnings
 
-picdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath("test_screen.ipynb"))),
-                      'e-paper\RaspberryPi_JetsonNano\python\pic')
-libdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath("test_screen.ipynb"))),
-                      'e-paper\RaspberryPi_JetsonNano\python\lib')
+from nbformat import write
+import logging
+logging.basicConfig(level=logging.DEBUG)
+picdir = os.sep.join([os.path.dirname(os.path.dirname(os.path.realpath("test_dscreen.py"))), 'e-paper/RaspberryPi_JetsonNano/python/pic'])
+libdir = os.sep.join([os.path.dirname(os.path.dirname(os.path.realpath("test_dscreen.py"))),
+                      'e-paper/RaspberryPi_JetsonNano/python/lib'])
+print(picdir)
+print(libdir)
 if os.path.exists(libdir):
     sys.path.append(libdir)
-import logging
 import pprint
 import base64
 #import pyyaml
-from datetime import datetime, timedelta
-# from waveshare_epd import epd5in83b_V2
+from datetime import datetime
+
 import time
 from PIL import Image, ImageDraw, ImageFont
 import traceback
+
+def is_raspberrypi():
+    return False
+    try:
+        with io.open('/sys/firmware/devicetree/base/model', 'r') as m:
+            if 'raspberry pi' in m.read().lower(): print("rpi"); return True
+    except Exception: pass
+    return Falsecd 
+if is_raspberrypi():
+    from waveshare_epd import epd5in83b_V2
 
 class EPaperDisplay:
     width = 0
@@ -90,51 +104,76 @@ def combineLayers(background, foreground):
     background.paste(foreground, (0, 0), foreground)
     return background
 
+logging.info("Init and Clear")
+if is_raspberrypi():
+    epd = epd5in83b_V2.EPD()
+    epd.init()
+    epd.Clear()
+    #logging.info("Goto Sleep...")
+    print("114")
+    time.sleep(1)
+else:
+    # see below 493
+    pass
 
-logging.basicConfig(level=logging.DEBUG)
 import json
 import requests
 # Wassertemperaturen
 ## Linth
-staos = {"Linth":2104, "ReussLuzern":2152, "ReussSeedorf":2056}
-for k,v in staos.items():
-    stao = k + ": "
-    url = "https://api.existenz.ch/apiv1/hydro/latest?locations=" + str(v)
-    payload={}
-    headers = {}
-    response = requests.request("GET", url, headers=headers, data=payload)
-    if response.status_code == 200:
-        print(response.content)
-        testjson = json.loads(response.text)
-        for p in testjson["payload"]:
-            stao += str(p["par"]) + ":" + str(p["val"]) + ", "
-    else:
-        print("error")
-    print(stao[:-2])
+def getWaterTemperatures():
+
+    staos = {"Linth":2104, "ReussLuzern":2152, "ReussSeedorf":2056}
+    for k,v in staos.items():
+        stao = k + ": "
+        url = "https://api.existenz.ch/apiv1/hydro/latest?locations=" + str(v)
+        payload={}
+        headers = {}
+        try:
+            
+            response = requests.request("GET", url, headers=headers, data=payload)
+            if response.status_code == 200:
+                print(response.content)
+                testjson = json.loads(response.text)
+                for p in testjson["payload"]:
+                    staos[k] += staos[k].join(str(p["par"]) + ":" + str(p["val"]) + ", ")
+            else:
+                print("connection error")
+            print(stao[:-2])
+        except:
+            logging.error("api.existenz.ch connection error")
+    return staos
 # PiHole stats request
-def getPiHole(host):
+def getPiHole(host, timeout):
     url = host + "/admin/api.php"
 
     payload = {}
     headers = {}
 
-    response = requests.request("GET", url, headers=headers, data=payload)
-    if response.status_code == 200:
-        stats = json.loads(response.text)
-    else:
-        return "api error with status_code:"+response.status_code
-    return stats
+    response = ""
+    stats=""
+    try:
+        response = requests.request("GET", url, headers=headers, data=payload, timeout=timeout)
+        if response.status_code == 200:
+            stats = json.loads(response.text)
+        else:
+            return "api error with status_code:"+str(response.status_code)
+        return stats
+    except:
+        logging.error("No connection to PiHole")
+        return "no connection"
 
-def getPiHoleSocket(command, host, port):
-    import socket
-    s = socket.socket()
-    s.connect((host, port))
-    str = input(command)
-    s.send(str.encode());
-    #if (str == "Bye" or str == "bye"):
-    #    break
-    print("N:", s.recv(1024).decode())
-    s.close()
+def getFritzBoxActiveConnections(host, timeout):
+    from fritzconnection.lib.fritzhosts import FritzHosts
+    numOfActiveClient = "-"
+    try:
+        fh = FritzHosts(address=host, password='grief4210', use_tls=True,timeout=3000)
+        fh_hostsInfo = fh.get_hosts_info()
+        numOfActiveClient = "w:" + len(list(filter(lambda h : (h['status'] == True and (h['interface'] == 'wlan24' or h['interface'] == 'wlan5' or h['interface'] == 'wlanGuest')), fh_hostsInfo)))+ \
+                        "|e:" + len(list(filter(lambda h : (h['status'] == True and (h['interface'] == 'lan')), fh_hostsInfo)))
+    except :
+        logging.error("No connection using FritzHosts")
+    return numOfActiveClient
+
 # ÖV
 ## Himmelrichstrasse
 def getStationboard(station, id):
@@ -142,35 +181,37 @@ def getStationboard(station, id):
 
     payload={}
     headers = {}
+    try:
+        response = requests.request("GET", url, headers=headers, data=payload)
 
-    response = requests.request("GET", url, headers=headers, data=payload)
-
-    if response.status_code == 200:
-        fahrplan = json.loads(response.text)
-        stationboard = []
-        #fahrplan_from['stationboard'][3]['stop']['station']['name'],
-        # fahrplan_to['stationboard'][3]['to'],
-        # when[''stationboard'][3]['[departure']['departure']
-        numOfDepartures = 0
-        if len(fahrplan['stationboard']) >= 4:
-            numOfDepartures = 4
+        if response.status_code == 200:
+            fahrplan = json.loads(response.text)
+            stationboard = []
+            #fahrplan_from['stationboard'][3]['stop']['station']['name'],
+            # fahrplan_to['stationboard'][3]['to'],
+            # when[''stationboard'][3]['[departure']['departure']
+            numOfDepartures = 0
+            if len(fahrplan['stationboard']) >= 4:
+                numOfDepartures = 4
+            else:
+                numOfDepartures = len(fahrplan['stationboard'])
+            for i in range(numOfDepartures):
+                now = datetime.now()
+                #now.ts
+                timestampOfDeparture = datetime.fromtimestamp(fahrplan['stationboard'][i]['stop']['departureTimestamp'])
+                dfrom =fahrplan['stationboard'][i]['stop']['station']['name'] + " nach "
+                dto = fahrplan['stationboard'][i]['to'] + " am: "
+                dwhen = fahrplan['stationboard'][i]['stop']['departure']
+                #din = timedelta(now, now)
+                stationboard.append(fahrplan['stationboard'][i]['stop']['station']['name'].split(", ")[1][:1] + "..." + "-" + \
+                                fahrplan['stationboard'][i]['to'].split(", ")[1] + ": " + \
+                        fahrplan['stationboard'][i]['stop']['departure'][12:19])
+                logging.info(stationboard[len(stationboard)-1])
+            return stationboard
         else:
-            numOfDepartures = len(fahrplan['stationboard'])
-        for i in range(numOfDepartures):
-            now = datetime.now()
-            #now.ts
-            timestampOfDeparture = datetime.fromtimestamp(fahrplan['stationboard'][i]['stop']['departureTimestamp'])
-            dfrom =fahrplan['stationboard'][i]['stop']['station']['name'] + " nach "
-            dto = fahrplan['stationboard'][i]['to'] + " am: "
-            dwhen = fahrplan['stationboard'][i]['stop']['departure']
-            #din = timedelta(now, now)
-            stationboard.append(fahrplan['stationboard'][i]['stop']['station']['name'].split(", ")[1][:1] + "..." + "-" + \
-                            fahrplan['stationboard'][i]['to'].split(", ")[1] + ": " + \
-                    fahrplan['stationboard'][i]['stop']['departure'][12:19])
-            logging.info(stationboard[len(stationboard)-1])
-        return stationboard
-    else:
-        print("SBB request error <> 200")
+            return ("SBB request error <> 200")
+    except:
+        return "fail"
 
 # Wasser SeenFlüsse
 """
@@ -180,25 +221,29 @@ LimmatHardbrück: 2099
 LinthWeesen: 2104
 WalenseeMurg: 2118"""
 waterfun = {"ReussSeedorf":2152, "ReussLuzern":2056, "LimmatHardbrücke":2099, "LinthWeesen":2104, "Murg":2118}
-def getWaterfun():
+def getWaterfun(timeout):
     import requests
 
     url = "https://api.existenz.ch/apiv1/hydro/latest?locations="
     hotspots = []
-    for loc, id in waterfun.items():
+    try:
+        for loc, id in waterfun.items():
 
-        payload={}
-        headers = {}
+            payload={}
+            headers = {}
 
-        response = requests.request("GET", url + str(id), headers=headers, data=payload)
+            response = requests.request("GET", url + str(id), headers=headers, data=payload, timeout=timeout)
 
-        data = json.loads(response.text)
-        logging.info(data)
-        hotspot = loc + ": (T,H):" + "(" 
-        for i in range(len(data['payload'])):
-            hotspot += data['payload'][i]['par'] + ":" + str(data['payload'][i]['val']) + ")"
-        logging.info(hotspot)
-        hotspots.append(hotspot)
+            data = json.loads(response.text)
+            logging.info(data)
+            hotspot = loc + ": "
+            for i in range(len(data['payload'])):
+                hotspot += str(data['payload'][i]['val']) + " | "
+            logging.info(hotspot)
+            hotspots.append(hotspot[:-2])
+    except:
+        logging.error("No connection")
+        return hotspots
     return hotspots
 
 # Meteo Forecast https://developer.srgssr.ch/apis/srf-weather/docs
@@ -234,6 +279,8 @@ def getMeteoForecast(geolocId):
         else:
             pass
     data = json.loads(response.text)
+    with open('forecast.json', 'w') as f:
+        f.writelines(response.text)
     rainPossibility = data
     return rainPossibility
 
@@ -313,14 +360,23 @@ def getCalendarEvents():
 
         # Prints the start and name of the next 10 events
         eventlist = []
+        from datetime import datetime
+
         for event in events:
             start = event['start'].get('dateTime', event['start'].get('date'))
-            print(start, event['summary'])
+            print(start, event['start'])
+            if len(start) > 10:
+                startdt =datetime.strptime(start, "%Y-%m-%dT%H:%M:%S%z")
+                start = startdt.strftime("%d.%m %H:%M")
+            else:
+                startdt = datetime.strptime(start, "%Y-%m-%d")
+                start = startdt.strftime("%d.%m         ")
             eventlist.append(start+" "+ event['summary'])
+            start = ""
 
 
     except HttpError as error:
-        print('An error occurred: %s' % error)
+        logging.error('An error occurred: %s' % error)
     return eventlist
 
 #print(response.text)
@@ -368,34 +424,32 @@ class ContentHandler():
     def printContentLength(self):
         logging.info("content-length:%s", str(self.content.__len__()))
 
-logging.info("Clear...")
-# epd.init()
-# epd.Clear()
-# endregion
-logging.info("Goto Sleep...")
-# epd.sleep()
+
 
 # region VerticalImage
 # Drawing on the Vertical image
+"""
 logging.info("2.Drawing on the Vertical image...")
-epd = EPaperDisplay(2, 480, 648, 1)
+epd = EPaperDisplay(1, 480, 648, 1)
 LBlackimage = Image.new('1', (epd.width, epd.height), 255)
 LRYimage = Image.new('1', (epd.width, epd.height), 255)
 drawblack = ImageDraw.Draw(LBlackimage)
 drawry = ImageDraw.Draw(LRYimage)
+"""
 
 
 c2 = -3
 c3 = -3
 # try:
-logging.info("epd5in83b_V2 Demo")
+#logging.info("epd5in83b_V2 Demo")
 
 # Drawing on the image
 logging.info("Drawing")
 logging.info(picdir)
-font24 = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 24)
-ont24 = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 18)
+font24 = ImageFont.truetype(os.path.join(picdir, 'calibrib.ttf'), 24)
+font18 = ImageFont.truetype(os.path.join(picdir, 'calibri.ttf'), 18)
 
+"""
 # Block oben links
 drawblack.text((2, 0), 'HEUTE', font=font24, fill=0)
 drawblack.text((2, 27), 'Post eingeschrieben abholen', font=font24, fill=0)
@@ -424,80 +478,143 @@ drawblack.text((2, 213), 'Ab16.0070% ', font=font24, fill=0)
 # LRYimage.save("v_hryimage.png", "PNG")
 LRYimage = convertWhitePxToTransparent(LRYimage)
 v_img = combineLayers(LBlackimage, LRYimage)
-v_img.show()
+#v_img.show()
 v_img.save("v_test.png", 'PNG')
 # epd.display(epd.getbuffer(LBlackimage), epd.getbuffer(LRYimage))
 time.sleep(2)
-
+"""
 
 ##################################### test dynamic content
+
 logging.info("dynamic content")
-content = ContentHandler('v', 2)
-logging.info("2.Drawing on the Vertical image dynamic...")
-epd = epd
-LBlackimage = Image.new('1', (epd.width, epd.height), 255)
-LRYimage = Image.new('1', (epd.width, epd.height), 255)
-drawblack = ImageDraw.Draw(LBlackimage)
-drawry = ImageDraw.Draw(LRYimage)
+content = ContentHandler('h', 2)
+logging.info("2.Drawing on the horizontal image dynamic...")
+if is_raspberrypi():
+    epd = epd
+else:
+    epd = EPaperDisplay(2, 648, 480, 0)
+#LBlackimage = Image.new('1', (epd.width, epd.height), 255)
+#LRYimage = Image.new('1', (epd.width, epd.height), 255)
+#drawblack = ImageDraw.Draw(LBlackimage)
+#drawry = ImageDraw.Draw(LRYimage)
+HBlackimage = Image.new('1', (epd.width, epd.height), 255)
+HRYimage = Image.new('1', (epd.width, epd.height), 255)
+drawblack = ImageDraw.Draw(HBlackimage)
+drawry = ImageDraw.Draw(HRYimage)
+time.sleep(2)
+
 
 c1 = content.appendContent(
     {"col": 1, "row": 1, "blocktitle": "HEUTE", "content": "HEUTE", "type": "title", "color": "black"})
 calendarEvents = getCalendarEvents()
 for event in calendarEvents:
-    text = event[:16]+event[19:]
+    text = event
     content.appendContent({"col": 1, "row": 1, "blocktitle": "HEUTE", "content": str(text), "type": "bulletpoint", "color": "black"})
 
 c2 = content.appendContent(
     {"col": 1, "row": 2, "blocktitle": "HEUTE", "content": "Post eingeschrieben abholen", "type": "bulletpoint",
      "color": "black"})
-c3 = content.appendContent(
-    {"col": 2, "row": 1, "blocktitle": "GEBURI", "content": "GEBURI", "type": "title", "color": "black"})
-hotspots = getWaterfun()
+#c3 = content.appendContent(
+#    {"col": 1, "row": 1, "blocktitle": "GEBURI", "content": "GEBURI", "type": "title", "color": "black"})
+hotspots = getWaterfun(1700)
 c38 = content.appendContent(
-            {"col": 2, "row": 1, "blocktitle": "Water", "content": "Water", "type": "title", "color": "black"})
+            {"col": 2, "row": 1, "blocktitle": "Water", "content": "WATER m^3/s | m.ü.M. | °C", "type": "title", "color": "black"})
 for hotspot in hotspots:
-    c38c = content.appendContent(
+    if hotspot != "":
+            c38c = content.appendContent(
             {"col": 2, "row": 1, "blocktitle": "Water", "content": hotspot, "type": "bulletpoint", "color": "black"})
     
 stationboardlist = getStationboard("Kriens, Himmelrichstrasse", 8589714)
 c4 = content.appendContent({"col": 1, "row": 3, "blocktitle": "FAHRPLAN", "content": "FAHRPLAN", "type": "title"})
-# Forecast of weather
-areas = {"Denise1":"47.4001,8.5415","Denise2":""}
-for name, geolocId in areas.items():
-    forecast = getMeteoForecast(geolocId)
-    logging.info(forecast)
+
 busnr = 0
 for bus in stationboardlist:
     content.appendContent({"col": 1, "row": 1, "blocktitle": "FAHRPLAN", "content": str(bus), "type": "bulletpoint", "color": "black"})
-piholestats = getPiHole("http://127.0.0.1")
-content.appendContent({"col":2,"row":1, "blocktitle": "NETZWERK", "content": "NETZWERK","type:":"title", "color":"black"})
-content.appendContent({"col":2,"row":1, "blocktitle": "NETZWERK", "content": "PiHoleStatus: " + piholestats['status'],"type:":"radiobutton", "color": "black"})
-content.appendContent({"col": 2, "row": 1, "blocktitle": "NETZWERK", "content": "ActClients/24h: " + "", "type": "bulletpoint", "color": "black"})
+# Forecast of weather
+areas = {"Denise1":"47.4001,8.5415","Denise2":"47.1139,9.2551", "Lukas":"47.0319,8.2827"}
+content.appendContent({"col": 2, "row": 1, "blocktitle": "FORECAST", "content": "FORECAST", "type": "title"})
+for name, geolocId in areas.items():
+    forecast = getMeteoForecast(geolocId)
+    print(type(forecast))
+    if 'message' in forecast:
+        continue
+    logging.info(forecast)
+    rainPROBPERC_mm = "17-21h(%|mm): "
+    for i in range(len(forecast['forecast']['60minutes'][17:21])):
+        rainPROBPERC_mm = rainPROBPERC_mm + " " + str(forecast['forecast']['60minutes'][i]['PROBPCP_PERCENT']) + "|" + str(forecast['forecast']['60minutes'][i]['RRR_MM'])
+    c39 = content.appendContent({"col":2, "row":1, "blocktitle": "FORECAST", "content": "Name:"+name + " FC:" + rainPROBPERC_mm , "type": "radiobutton"})
+
+# NETWORK
+piholestats = getPiHole("127.0.0.1", 1000)
+
+
+if piholestats == 'enabled':
+    piholestats = "up"
+else:
+    piholestats = "down"
+
+numOfActiveClient = "-"
+numOfActiveClient = getFritzBoxActiveConnections("127.0.0.1",timeout=700)
+content.appendContent({"col":2,"row":1, "blocktitle": "NETZWERK", "content": "NETZWERK","type":"title", "color":"black"})
+content.appendContent({"col":2,"row":1, "blocktitle": "NETZWERK", "content": "Clients: " + numOfActiveClient + " PiHoleStatus: " + piholestats, "type":"radiobutton", "color": "black"})
+#content.appendContent({"col": 2, "row": 1, "blocktitle": "NETZWERK", "content": "ActClients/24h: " + numOfActiveClient, "type": "bulletpoint", "color": "black"})
+
+
+# build screen image
 rowheight = 24
-cnt = 0
-for c in content.content:
-    drawblack.text((epd.coloffset[c['col']-1], cnt*rowheight), c['content'], font=font24, fill=0)
-    cnt=cnt+1
-LRYimage = convertWhitePxToTransparent(LRYimage)
-v_d_img = combineLayers(LBlackimage, LRYimage)
-v_d_img.show()
-logging.info("content:%s", content.__str__())
+rowheightTitle = 28
+
 
 # dynamic displayhorizontalcontent
 logging.info("num-of-entries:%s", content.content.__len__())
 logging.info("content:%s", content.__str__())
 # create vertical image from dynamic content
-epd = EPaperDisplay(2, 648, 480, 0)
-HBlackimage = Image.new('1', (epd.width, epd.height), 255)
-HRYimage = Image.new('1', (epd.width, epd.height), 255)
-drawblack = ImageDraw.Draw(HBlackimage)
-drawry = ImageDraw.Draw(HRYimage)
-cnt = 1
+if is_raspberrypi():
+    epd = epd
+else:
+    epd = EPaperDisplay(2, 648, 480, 0)
+
+cnt_c1 = 1
+cnt_c2 = 1
+coloffset = [2, 310]
 for c in content.content:
-    drawblack.text((epd.coloffset[c['col']-1], cnt*rowheight), c['content'], font=font24, fill=0)
-    cnt = cnt + 1
+    #drawblack.text((epd.coloffset[c['col']-1], cnt*rowheight), c['content'], font=font24, fill=0)
+    if c['col'] == 1:
+        if c['type'] == 'title':
+            cnt_c1 += 1
+            drawblack.text((coloffset[c['col']-1], cnt_c1*rowheight-rowheight), c['content'], font=font24, fill=0)
+        else:
+            drawblack.text((coloffset[c['col']-1], cnt_c1*rowheight-rowheight), c['content'], font=font18, fill=0)
+        cnt_c1 = cnt_c1 + 1
+    elif c['col'] == 2:
+        if c['type'] == 'title':
+            cnt_c2 += 1
+            drawblack.text((coloffset[c['col']-1], cnt_c2*rowheight-rowheight), c['content'], font=font24, fill=0)
+        else:
+            drawblack.text((coloffset[c['col']-1], cnt_c2*rowheight-rowheight), c['content'], font=font18, fill=0)
+        cnt_c2 = cnt_c2 + 1
 HRYimage = convertWhitePxToTransparent(HRYimage)
 h_d_img = combineLayers(HBlackimage, HRYimage)
-h_d_img.show()
+if is_raspberrypi():
+    epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRYimage))
 
 
+if not is_raspberrypi():
+    h_d_img.show()
+cnt = 0
+
+# vertical content
+""""
+vertical_content = content.content
+for c in vertical_content:
+    c["col"]=1
+    if c['type']=='title':
+        drawblack.text((epd.coloffset[c['col']-1], cnt*rowheight), c['content'], font=font24, fill=0)
+    else:
+        drawblack.text((epd.coloffset[c['col']-1], cnt*rowheight), c['content'], font=font24, fill=0)
+    cnt=cnt+1
+LRYimage = convertWhitePxToTransparent(LRYimage)
+v_d_img = combineLayers(LBlackimage, LRYimage)
+v_d_img.show()
+logging.info("content:%s", content.__str__())
+"""
