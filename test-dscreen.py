@@ -25,22 +25,21 @@ from PIL import Image, ImageDraw, ImageFont
 import traceback
 
 def is_raspberrypi():
-    return False
     try:
         with io.open('/sys/firmware/devicetree/base/model', 'r') as m:
             if 'raspberry pi' in m.read().lower(): print("rpi"); return True
     except Exception: pass
-    return Falsecd 
+    return False
 if is_raspberrypi():
     from waveshare_epd import epd5in83b_V2
 
 class EPaperDisplay:
     width = 0
     height = 0
-    FONT24DISPLAYWIDTH_V = 460
-    FONT24DISPLAYWIDTH_H = FONT24DISPLAYWIDTH_V * 648 / 480
-    font24displaywidth = 0
-    FONT18DISPLAYWIDTH = 0
+    font22DISPLAYWIDTH_V = 460
+    font22DISPLAYWIDTH_H = font22DISPLAYWIDTH_V * 648 / 480
+    font22displaywidth = 0
+    font20DISPLAYWIDTH = 0
     coloffset = []
     COLMARGIN = 2
     orientation = 0 # 0:h, 1:v
@@ -50,11 +49,11 @@ class EPaperDisplay:
         self.width = width
         self.height = height
         if orientation == 0:
-            self.font24displaywidth = self.FONT24DISPLAYWIDTH_H
+            self.font22displaywidth = self.font22DISPLAYWIDTH_H
         else:
-            self.font24displaywidth = self.FONT24DISPLAYWIDTH_V
+            self.font22displaywidth = self.font22DISPLAYWIDTH_V
         for c in range(0, cols):
-            self.coloffset.append(c * (self.font24displaywidth / cols) + self.COLMARGIN)
+            self.coloffset.append(c * (self.font22displaywidth / cols) + self.COLMARGIN)
 
 
 def convertWhitePxToTransparent(img):
@@ -129,7 +128,6 @@ def getWaterTemperatures():
         payload={}
         headers = {}
         try:
-            
             response = requests.request("GET", url, headers=headers, data=payload)
             if response.status_code == 200:
                 print(response.content)
@@ -178,9 +176,10 @@ def getFritzBoxActiveConnections(host, timeout):
 ## Himmelrichstrasse
 def getStationboard(station, id):
     url = "http://transport.opendata.ch/v1/stationboard?station="+station+"&limit=3&id="+str(id)
-
+    
     payload={}
     headers = {}
+    
     try:
         response = requests.request("GET", url, headers=headers, data=payload)
 
@@ -223,7 +222,7 @@ WalenseeMurg: 2118"""
 waterfun = {"ReussSeedorf":2152, "ReussLuzern":2056, "LimmatHardbrücke":2099, "LinthWeesen":2104, "Murg":2118}
 def getWaterfun(timeout):
     import requests
-
+    response = ""
     url = "https://api.existenz.ch/apiv1/hydro/latest?locations="
     hotspots = []
     try:
@@ -252,19 +251,22 @@ Kriens: 47.0330,8.2791
 Luzern: 47.0384,8.3135
 Mols: 47.1120,9.2810
 8057: 47.4001,8.5415
+GWF: 47.0456 8.3087
 """
 def getMeteoForecast(geolocId):
-    url = "https://api.srgssr.ch/srf-meteo/forecast/" + str(geolocId)
-    token = ""
-    tries = 0
+    url = "https://api.srgssr.ch/srf-meteo/forecast/" + str(geolocId)+""
     token = getMeteoToken()
+    tries = 0
+    response = ""
     payload = {}
     headers = {
     'geolocationId': '',
-    'Authorization': 'Bearer vyzjrhkA2bYst3A4vpmxSMeHpyhy'
+    'Authorization': 'Bearer '+token
     }
-
-    response = requests.request("GET", url, headers=headers, data=payload)
+    try:
+        response = requests.request("GET", url, headers=headers, data=payload)
+    except:
+        logging.error("Forecast connection error")
     while(response.status_code != 200 and tries < 2):
         
 
@@ -286,6 +288,8 @@ def getMeteoForecast(geolocId):
 
 def getMeteoToken():
     url = "https://api.srgssr.ch/oauth/v1/accesstoken?grant_type=client_credentials"
+    response = ""
+    token = ""
     consumerKey = ""
     base64enc = base64.b64encode('data to be encoded'.encode('ascii'))
     payload = {}
@@ -295,11 +299,13 @@ def getMeteoToken():
         'Content-Length': '0',
         'Postman-Token': '24264e32-2de0-f1e3-f3f8-eab014bb6d76'
     }
-
-    response = requests.request("POST", url, headers=headers, data=payload)
-
-    print(response.text)
-    token = json.loads(response.text)
+    try:
+        response = requests.request("POST", url, headers=headers, data=payload)
+        token = json.loads(response.text)
+        token = json.loads(response.text)
+    except:
+        logging.error("Meteo Token failed connection")
+        token['access_token'] = "fail"
     return token['access_token']
 
 
@@ -340,6 +346,7 @@ def getCalendarEvents():
     SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
     SERVICE_ACCOUNT_FILE = 'credentials.json'
     from google.cloud import storage
+    eventlist = []
 
     credentials = service_account.Credentials.from_service_account_file(
             SERVICE_ACCOUNT_FILE, scopes=SCOPES)
@@ -359,7 +366,6 @@ def getCalendarEvents():
             return
 
         # Prints the start and name of the next 10 events
-        eventlist = []
         from datetime import datetime
 
         for event in events:
@@ -377,6 +383,8 @@ def getCalendarEvents():
 
     except HttpError as error:
         logging.error('An error occurred: %s' % error)
+    except:
+        logging.error("googleauth")
     return eventlist
 
 #print(response.text)
@@ -446,26 +454,26 @@ c3 = -3
 # Drawing on the image
 logging.info("Drawing")
 logging.info(picdir)
-font24 = ImageFont.truetype(os.path.join(picdir, 'calibrib.ttf'), 24)
-font18 = ImageFont.truetype(os.path.join(picdir, 'calibri.ttf'), 18)
+font22 = ImageFont.truetype(os.path.join(picdir, 'calibrib.ttf'), 22)
+font20 = ImageFont.truetype(os.path.join(picdir, 'calibri.ttf'), 20)
 
 """
 # Block oben links
-drawblack.text((2, 0), 'HEUTE', font=font24, fill=0)
-drawblack.text((2, 27), 'Post eingeschrieben abholen', font=font24, fill=0)
-drawblack.text((2, 52), 'Denise ob ich am WE mit ihr', font=font24, fill=0)
-drawblack.text((2, 77), 'OLG 17.30', font=font24, fill=0)
-drawblack.text((2, 102), 'Karton', font=font24, fill=0)
+drawblack.text((2, 0), 'HEUTE', font=font22, fill=0)
+drawblack.text((2, 27), 'Post eingeschrieben abholen', font=font22, fill=0)
+drawblack.text((2, 52), 'Denise ob ich am WE mit ihr', font=font22, fill=0)
+drawblack.text((2, 77), 'OLG 17.30', font=font22, fill=0)
+drawblack.text((2, 102), 'Karton', font=font22, fill=0)
 
 # Block mitte links
-drawblack.text((2, 132), 'GEBURI', font=font24, fill=0)
-drawblack.text((2, 159), '29.6. Peter', font=font24, fill=0)
+drawblack.text((2, 132), 'GEBURI', font=font22, fill=0)
+drawblack.text((2, 159), '29.6. Peter', font=font22, fill=0)
 
 # Block unten links
-drawblack.text((2, 186), 'REGENJACKE', font=font24, fill=0)
-drawblack.text((2, 213), 'Ab16.0070% ', font=font24, fill=0)
+drawblack.text((2, 186), 'REGENJACKE', font=font22, fill=0)
+drawblack.text((2, 213), 'Ab16.0070% ', font=font22, fill=0)
 
-# drawblack.text((20, 50), u'微雪电子', font = font18, fill = 0)
+# drawblack.text((20, 50), u'微雪电子', font = font20, fill = 0)
 # drawblack.line((10, 90, 60, 140), fill = 0)
 # drawblack.line((60, 90, 10, 140), fill = 0)
 # drawblack.rectangle((10, 90, 60, 140), outline = 0)
@@ -531,7 +539,7 @@ busnr = 0
 for bus in stationboardlist:
     content.appendContent({"col": 1, "row": 1, "blocktitle": "FAHRPLAN", "content": str(bus), "type": "bulletpoint", "color": "black"})
 # Forecast of weather
-areas = {"Denise1":"47.4001,8.5415","Denise2":"47.1139,9.2551", "Lukas":"47.0319,8.2827"}
+areas = {"Denise1":"47.4001,8.5415","Denise2":"47.1139,9.2551", "Lukas":"47.0319,8.2827", "GWF":"47.0456,8.3087"}
 content.appendContent({"col": 2, "row": 1, "blocktitle": "FORECAST", "content": "FORECAST", "type": "title"})
 for name, geolocId in areas.items():
     forecast = getMeteoForecast(geolocId)
@@ -558,7 +566,12 @@ numOfActiveClient = getFritzBoxActiveConnections("127.0.0.1",timeout=700)
 content.appendContent({"col":2,"row":1, "blocktitle": "NETZWERK", "content": "NETZWERK","type":"title", "color":"black"})
 content.appendContent({"col":2,"row":1, "blocktitle": "NETZWERK", "content": "Clients: " + numOfActiveClient + " PiHoleStatus: " + piholestats, "type":"radiobutton", "color": "black"})
 #content.appendContent({"col": 2, "row": 1, "blocktitle": "NETZWERK", "content": "ActClients/24h: " + numOfActiveClient, "type": "bulletpoint", "color": "black"})
-
+from datetime import datetime
+now = datetime.now()
+nowstr = datetime.strftime(now, "%d.%m.%Y %H:%M")
+c83 = content.appendContent(
+    {"col": 2, "row": 1, "blocktitle": "LAST UPDATED", "content": "Last updated:" +nowstr, "type": "radiobutton", "color": "black"})
+#drawblack.text((coloffset[c['col']-1], cnt_c2*rowheight-rowheight), c['content'], font=font22, fill=0)
 
 # build screen image
 rowheight = 24
@@ -578,25 +591,28 @@ cnt_c1 = 1
 cnt_c2 = 1
 coloffset = [2, 310]
 for c in content.content:
-    #drawblack.text((epd.coloffset[c['col']-1], cnt*rowheight), c['content'], font=font24, fill=0)
+    #drawblack.text((epd.coloffset[c['col']-1], cnt*rowheight), c['content'], font=font22, fill=0)
     if c['col'] == 1:
         if c['type'] == 'title':
             cnt_c1 += 1
-            drawblack.text((coloffset[c['col']-1], cnt_c1*rowheight-rowheight), c['content'], font=font24, fill=0)
+            drawblack.text((coloffset[c['col']-1], cnt_c1*rowheight-rowheight), c['content'], font=font22, fill=0)
         else:
-            drawblack.text((coloffset[c['col']-1], cnt_c1*rowheight-rowheight), c['content'], font=font18, fill=0)
+            drawblack.text((coloffset[c['col']-1], cnt_c1*rowheight-rowheight), c['content'], font=font20, fill=0)
         cnt_c1 = cnt_c1 + 1
     elif c['col'] == 2:
         if c['type'] == 'title':
             cnt_c2 += 1
-            drawblack.text((coloffset[c['col']-1], cnt_c2*rowheight-rowheight), c['content'], font=font24, fill=0)
+            drawblack.text((coloffset[c['col']-1], cnt_c2*rowheight-rowheight), c['content'], font=font22, fill=0)
         else:
-            drawblack.text((coloffset[c['col']-1], cnt_c2*rowheight-rowheight), c['content'], font=font18, fill=0)
+            drawblack.text((coloffset[c['col']-1], cnt_c2*rowheight-rowheight), c['content'], font=font20, fill=0)
         cnt_c2 = cnt_c2 + 1
 HRYimage = convertWhitePxToTransparent(HRYimage)
 h_d_img = combineLayers(HBlackimage, HRYimage)
 if is_raspberrypi():
     epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRYimage))
+import datetime
+#from datetime import strftime
+
 
 
 if not is_raspberrypi():
@@ -609,9 +625,9 @@ vertical_content = content.content
 for c in vertical_content:
     c["col"]=1
     if c['type']=='title':
-        drawblack.text((epd.coloffset[c['col']-1], cnt*rowheight), c['content'], font=font24, fill=0)
+        drawblack.text((epd.coloffset[c['col']-1], cnt*rowheight), c['content'], font=font22, fill=0)
     else:
-        drawblack.text((epd.coloffset[c['col']-1], cnt*rowheight), c['content'], font=font24, fill=0)
+        drawblack.text((epd.coloffset[c['col']-1], cnt*rowheight), c['content'], font=font22, fill=0)
     cnt=cnt+1
 LRYimage = convertWhitePxToTransparent(LRYimage)
 v_d_img = combineLayers(LBlackimage, LRYimage)
