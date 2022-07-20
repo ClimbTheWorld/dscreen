@@ -5,7 +5,7 @@ import sys
 import os
 from warnings import catch_warnings
 
-from nbformat import write
+#from nbformat import write
 import logging
 logging.basicConfig(level=logging.DEBUG)
 picdir = os.sep.join([os.path.dirname(os.path.dirname(os.path.realpath("test_dscreen.py"))), 'e-paper/RaspberryPi_JetsonNano/python/pic'])
@@ -29,9 +29,10 @@ def is_raspberrypi():
         with io.open('/sys/firmware/devicetree/base/model', 'r') as m:
             if 'raspberry pi' in m.read().lower(): print("rpi"); return True
     except Exception: pass
-    return False
+    return True
 if is_raspberrypi():
     from waveshare_epd import epd5in83b_V2
+    logging.info("import waveshare")
 
 class EPaperDisplay:
     width = 0
@@ -128,6 +129,7 @@ def getWaterTemperatures():
         payload={}
         headers = {}
         try:
+            
             response = requests.request("GET", url, headers=headers, data=payload)
             if response.status_code == 200:
                 print(response.content)
@@ -176,10 +178,9 @@ def getFritzBoxActiveConnections(host, timeout):
 ## Himmelrichstrasse
 def getStationboard(station, id):
     url = "http://transport.opendata.ch/v1/stationboard?station="+station+"&limit=3&id="+str(id)
-    
+
     payload={}
     headers = {}
-    
     try:
         response = requests.request("GET", url, headers=headers, data=payload)
 
@@ -222,7 +223,7 @@ WalenseeMurg: 2118"""
 waterfun = {"ReussSeedorf":2152, "ReussLuzern":2056, "LimmatHardbrücke":2099, "LinthWeesen":2104, "Murg":2118}
 def getWaterfun(timeout):
     import requests
-    response = ""
+
     url = "https://api.existenz.ch/apiv1/hydro/latest?locations="
     hotspots = []
     try:
@@ -251,22 +252,19 @@ Kriens: 47.0330,8.2791
 Luzern: 47.0384,8.3135
 Mols: 47.1120,9.2810
 8057: 47.4001,8.5415
-GWF: 47.0456 8.3087
 """
 def getMeteoForecast(geolocId):
-    url = "https://api.srgssr.ch/srf-meteo/forecast/" + str(geolocId)+""
-    token = getMeteoToken()
+    url = "https://api.srgssr.ch/srf-meteo/forecast/" + str(geolocId)
+    token = ""
     tries = 0
-    response = ""
+    token = getMeteoToken()
     payload = {}
     headers = {
     'geolocationId': '',
-    'Authorization': 'Bearer '+token
+    'Authorization': 'Bearer vyzjrhkA2bYst3A4vpmxSMeHpyhy'
     }
-    try:
-        response = requests.request("GET", url, headers=headers, data=payload)
-    except:
-        logging.error("Forecast connection error")
+
+    response = requests.request("GET", url, headers=headers, data=payload)
     while(response.status_code != 200 and tries < 2):
         
 
@@ -288,8 +286,6 @@ def getMeteoForecast(geolocId):
 
 def getMeteoToken():
     url = "https://api.srgssr.ch/oauth/v1/accesstoken?grant_type=client_credentials"
-    response = ""
-    token = ""
     consumerKey = ""
     base64enc = base64.b64encode('data to be encoded'.encode('ascii'))
     payload = {}
@@ -299,13 +295,11 @@ def getMeteoToken():
         'Content-Length': '0',
         'Postman-Token': '24264e32-2de0-f1e3-f3f8-eab014bb6d76'
     }
-    try:
-        response = requests.request("POST", url, headers=headers, data=payload)
-        token = json.loads(response.text)
-        token = json.loads(response.text)
-    except:
-        logging.error("Meteo Token failed connection")
-        token['access_token'] = "fail"
+
+    response = requests.request("POST", url, headers=headers, data=payload)
+
+    print(response.text)
+    token = json.loads(response.text)
     return token['access_token']
 
 
@@ -346,7 +340,6 @@ def getCalendarEvents():
     SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
     SERVICE_ACCOUNT_FILE = 'credentials.json'
     from google.cloud import storage
-    eventlist = []
 
     credentials = service_account.Credentials.from_service_account_file(
             SERVICE_ACCOUNT_FILE, scopes=SCOPES)
@@ -366,6 +359,7 @@ def getCalendarEvents():
             return
 
         # Prints the start and name of the next 10 events
+        eventlist = []
         from datetime import datetime
 
         for event in events:
@@ -383,8 +377,6 @@ def getCalendarEvents():
 
     except HttpError as error:
         logging.error('An error occurred: %s' % error)
-    except:
-        logging.error("googleauth")
     return eventlist
 
 #print(response.text)
@@ -454,8 +446,8 @@ c3 = -3
 # Drawing on the image
 logging.info("Drawing")
 logging.info(picdir)
-font22 = ImageFont.truetype(os.path.join(picdir, 'calibrib.ttf'), 22)
-font20 = ImageFont.truetype(os.path.join(picdir, 'calibri.ttf'), 20)
+font22 = ImageFont.truetype(os.path.join(picdir, 'calibrib.ttf'), 24)
+font20 = ImageFont.truetype(os.path.join(picdir, 'calibri.ttf'), 18)
 
 """
 # Block oben links
@@ -499,6 +491,7 @@ content = ContentHandler('h', 2)
 logging.info("2.Drawing on the horizontal image dynamic...")
 if is_raspberrypi():
     epd = epd
+    logging.info("is raspberry pi")
 else:
     epd = EPaperDisplay(2, 648, 480, 0)
 #LBlackimage = Image.new('1', (epd.width, epd.height), 255)
@@ -510,8 +503,7 @@ HRYimage = Image.new('1', (epd.width, epd.height), 255)
 drawblack = ImageDraw.Draw(HBlackimage)
 drawry = ImageDraw.Draw(HRYimage)
 time.sleep(2)
-
-
+logging.info("505")
 c1 = content.appendContent(
     {"col": 1, "row": 1, "blocktitle": "HEUTE", "content": "HEUTE", "type": "title", "color": "black"})
 calendarEvents = getCalendarEvents()
@@ -539,7 +531,7 @@ busnr = 0
 for bus in stationboardlist:
     content.appendContent({"col": 1, "row": 1, "blocktitle": "FAHRPLAN", "content": str(bus), "type": "bulletpoint", "color": "black"})
 # Forecast of weather
-areas = {"Denise1":"47.4001,8.5415","Denise2":"47.1139,9.2551", "Lukas":"47.0319,8.2827", "GWF":"47.0456,8.3087"}
+areas = {"Denise1":"47.4001,8.5415","Denise2":"47.1139,9.2551", "Lukas":"47.0319,8.2827"}
 content.appendContent({"col": 2, "row": 1, "blocktitle": "FORECAST", "content": "FORECAST", "type": "title"})
 for name, geolocId in areas.items():
     forecast = getMeteoForecast(geolocId)
@@ -566,12 +558,7 @@ numOfActiveClient = getFritzBoxActiveConnections("127.0.0.1",timeout=700)
 content.appendContent({"col":2,"row":1, "blocktitle": "NETZWERK", "content": "NETZWERK","type":"title", "color":"black"})
 content.appendContent({"col":2,"row":1, "blocktitle": "NETZWERK", "content": "Clients: " + numOfActiveClient + " PiHoleStatus: " + piholestats, "type":"radiobutton", "color": "black"})
 #content.appendContent({"col": 2, "row": 1, "blocktitle": "NETZWERK", "content": "ActClients/24h: " + numOfActiveClient, "type": "bulletpoint", "color": "black"})
-from datetime import datetime
-now = datetime.now()
-nowstr = datetime.strftime(now, "%d.%m.%Y %H:%M")
-c83 = content.appendContent(
-    {"col": 2, "row": 1, "blocktitle": "LAST UPDATED", "content": "Last updated:" +nowstr, "type": "radiobutton", "color": "black"})
-#drawblack.text((coloffset[c['col']-1], cnt_c2*rowheight-rowheight), c['content'], font=font22, fill=0)
+
 
 # build screen image
 rowheight = 24
@@ -584,6 +571,7 @@ logging.info("content:%s", content.__str__())
 # create vertical image from dynamic content
 if is_raspberrypi():
     epd = epd
+    logging.info("is raspberry pi")
 else:
     epd = EPaperDisplay(2, 648, 480, 0)
 
@@ -609,18 +597,31 @@ for c in content.content:
 HRYimage = convertWhitePxToTransparent(HRYimage)
 h_d_img = combineLayers(HBlackimage, HRYimage)
 if is_raspberrypi():
-    epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRYimage))
+    #epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRYimage))
+    logging.info("display {}".format(type(epd)))
 import datetime
 #from datetime import strftime
+logging.info("600")
+from datetime import datetime
+now = datetime.now()
+nowstr = datetime.strftime(now, "%d.%m.%Y %H:%M")
+logging.info("605")
+c83 = content.appendContent(
+    {"col": 2, "row": 1, "blocktitle": "LAST UPDATED", "content": nowstr, "type": "radiobutton", "color": "black"})
+drawblack.text((coloffset[c['col']-1], cnt_c2*rowheight-rowheight), c['content'], font=font22, fill=0)
+logging.info("607")
+from time import sleep
+sleep(1)
+#if not is_raspberrypi():
+#    h_d_img.show()
+if is_raspberrypi():
+    epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRYimage))
+    logging.info("last")
 
-
-
-if not is_raspberrypi():
-    h_d_img.show()
 cnt = 0
 
 # vertical content
-""""
+"""
 vertical_content = content.content
 for c in vertical_content:
     c["col"]=1

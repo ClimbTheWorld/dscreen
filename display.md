@@ -12,5 +12,9 @@ https://www.waveshare.com/wiki/5.83inch_e-Paper_HAT_(B)
 ** Kalender Allgemein
 ** Menü für heute / Einkaufsliste (Knopf für das Senden an Email/Kalendereintrag)
 ** Regenjacke?
+Meteo (50 req/day in 'Freemium' plan)
+Token: https://developer.srgssr.ch/user/me/apps?destination=user/me/apps
+Forecast:
 ** number of clients in last 24h
-** phile stats
+** phile stats DONE
+GET http://pihole-ip/admin/api.php
