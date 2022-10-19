@@ -29,7 +29,7 @@ def is_raspberrypi():
         with io.open('/sys/firmware/devicetree/base/model', 'r') as m:
             if 'raspberry pi' in m.read().lower(): print("rpi"); return True
     except Exception: pass
-    return True
+    return False
 if is_raspberrypi():
     from waveshare_epd import epd5in83b_V2
     logging.info("import waveshare")
