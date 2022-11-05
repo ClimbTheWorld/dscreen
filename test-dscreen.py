@@ -220,12 +220,12 @@ def getStationboard(station, id):
 
 # Wasser SeenFlüsse
 """
-ReussSeedorf: 2152
-ReussLuzern: 2056
+ReussSeedorf: 2056
+ReussLuzern: 2152
 LimmatHardbrück: 2099
 LinthWeesen: 2104
 WalenseeMurg: 2118"""
-waterfun = {"ReussSeedorf":2152, "ReussLuzern":2056, "LimmatHardbrücke":2099, "LinthWeesen":2104, "Murg":2118}
+waterfun = {"ReussSeedorf":2056, "ReussLuzern":2152, "LimmatHardbrücke":2099, "LinthWeesen":2104, "Murg":2118}
 def getWaterfun(timeout):
     import requests
 
@@ -561,7 +561,7 @@ else:
 numOfActiveClient = "-"
 numOfActiveClient = getFritzBoxActiveConnections("192.168.178.1",timeout=700)
 content.appendContent({"col":2,"row":1, "blocktitle": "NETZWERK", "content": "NETZWERK","type":"title", "color":"black"})
-content.appendContent({"col":2,"row":1, "blocktitle": "NETZWERK", "content": "Clients: " + numOfActiveClient + " PiHoleStatus: " + piholestats, "type":"radiobutton", "color": "black"})
+content.appendContent({"col":2,"row":1, "blocktitle": "NETZWERK", "content": "Clients: " + numOfActiveClient + "| PiHoleStatus: " + piholestats, "type":"radiobutton", "color": "black"})
 from datetime import datetime
 now = datetime.now()
 nowstr = datetime.strftime(now, "%d.%m.%Y %H:%M")
