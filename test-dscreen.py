@@ -11,6 +11,7 @@ logging.basicConfig(level=logging.DEBUG)
 picdir = os.sep.join([os.path.dirname(os.path.dirname(os.path.realpath("test_dscreen.py"))), 'e-paper/RaspberryPi_JetsonNano/python/pic'])
 libdir = os.sep.join([os.path.dirname(os.path.dirname(os.path.realpath("test_dscreen.py"))),
                       'e-paper/RaspberryPi_JetsonNano/python/lib'])
+exit(1)
 print(picdir)
 print(libdir)
 if os.path.exists(libdir):
@@ -31,7 +32,7 @@ def is_raspberrypi():
     except Exception: pass
     return True
 if is_raspberrypi():
-    from waveshare_epd import epd5in83b_V2
+    from RaspberryPi_JetsonNano.python.lib.waveshare_epd import epd5in83b_V2
     logging.info("import waveshare")
 
 class EPaperDisplay:
@@ -128,14 +129,18 @@ def getWaterTemperatures():
         url = "https://api.existenz.ch/apiv1/hydro/latest?locations=" + str(v)
         payload={}
         headers = {}
+        print("test")
+
         try:
             
             response = requests.request("GET", url, headers=headers, data=payload)
             if response.status_code == 200:
                 print(response.content)
                 testjson = json.loads(response.text)
+                print(response.text)
                 for p in testjson["payload"]:
                     staos[k] += staos[k].join(str(p["par"]) + ":" + str(p["val"]) + ", ")
+                    print(staos)
             else:
                 print("connection error")
             print(stao[:-2])
@@ -487,6 +492,9 @@ time.sleep(2)
 ##################################### test dynamic content
 
 logging.info("dynamic content")
+print("test")
+getWaterTemperatures()
+exit(-1)
 content = ContentHandler('h', 2)
 logging.info("2.Drawing on the horizontal image dynamic...")
 if is_raspberrypi():
@@ -561,7 +569,9 @@ from datetime import datetime
 now = datetime.now()
 nowstr = datetime.strftime(now, "%d.%m.%Y %H:%M")
 c83 = content.appendContent(
-    {"col": 2, "row": 1, "blocktitle": "LAST UPDATED", "content": nowstr, "type": "radiobutton", "color": "black"})
+    {"col": 2, "row": 1, "blocktitle": "LAST UPDATED", "content": "LAST UPDATED", "type": "title", "color": "black"})
+c83 = content.appendContent({"col": 2, "row": 2, "blocktitle": "LAST UPDATED", "content": str(nowstr), "type": "bulletpoint",
+     "color": "black"})
 
 # build screen image
 rowheight = 24
@@ -609,9 +619,9 @@ from datetime import datetime
 now = datetime.now()
 nowstr = datetime.strftime(now, "%d.%m.%Y %H:%M")
 logging.info("605")
-c83 = content.appendContent(
-    {"col": 2, "row": 1, "blocktitle": "LAST UPDATED", "content": nowstr, "type": "radiobutton", "color": "black"})
-drawblack.text((coloffset[c['col']-1], cnt_c2*rowheight-rowheight), c['content'], font=font22, fill=0)
+"""c83 = content.appendContent(
+    {"col": 2, "row": 1, "blocktitle": "LAST UPDATED", "content": nowstr, "type": "radiobutton", "color": "black"})"""
+#drawblack.text((coloffset[c['col']-1], cnt_c2*rowheight-rowheight), c['content'], font=font22, fill=0)
 logging.info("607")
 from time import sleep
 sleep(1)
