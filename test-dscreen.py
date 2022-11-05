@@ -11,7 +11,6 @@ logging.basicConfig(level=logging.DEBUG)
 picdir = os.sep.join([os.path.dirname(os.path.dirname(os.path.realpath("test_dscreen.py"))), 'e-paper/RaspberryPi_JetsonNano/python/pic'])
 libdir = os.sep.join([os.path.dirname(os.path.dirname(os.path.realpath("test_dscreen.py"))),
                       'e-paper/RaspberryPi_JetsonNano/python/lib'])
-exit(1)
 print(picdir)
 print(libdir)
 if os.path.exists(libdir):
@@ -30,9 +29,9 @@ def is_raspberrypi():
         with io.open('/sys/firmware/devicetree/base/model', 'r') as m:
             if 'raspberry pi' in m.read().lower(): print("rpi"); return True
     except Exception: pass
-    return True
+    return False
 if is_raspberrypi():
-    from RaspberryPi_JetsonNano.python.lib.waveshare_epd import epd5in83b_V2
+    from waveshare_epd import epd5in83b_V2
     logging.info("import waveshare")
 
 class EPaperDisplay:
@@ -129,8 +128,6 @@ def getWaterTemperatures():
         url = "https://api.existenz.ch/apiv1/hydro/latest?locations=" + str(v)
         payload={}
         headers = {}
-        print("test")
-
         try:
             
             response = requests.request("GET", url, headers=headers, data=payload)
@@ -173,10 +170,13 @@ def getFritzBoxActiveConnections(host, timeout):
     try:
         fh = FritzHosts(address=host, password='grief4210', use_tls=True,timeout=3000)
         fh_hostsInfo = fh.get_hosts_info()
-        numOfActiveClient = "w:" + len(list(filter(lambda h : (h['status'] == True and (h['interface'] == 'wlan24' or h['interface'] == 'wlan5' or h['interface'] == 'wlanGuest')), fh_hostsInfo)))+ \
-                        "|e:" + len(list(filter(lambda h : (h['status'] == True and (h['interface'] == 'lan')), fh_hostsInfo)))
-    except :
-        logging.error("No connection using FritzHosts")
+        testwlanfilter = filter(lambda h : (h['status'] == True and (h['interface_type'] == '802.11')), fh_hostsInfo)
+        testwlanlist = list(testwlanfilter)
+        testethlist=list(filter(lambda h : (h['status'] == True and (h['interface_type'] == 'lan')), fh_hostsInfo))
+        numOfActiveClient = "w:" + str(len(testwlanlist))+ \
+                        "|e:" + str(len(testethlist))
+    except Exception:
+        logging.error("{}: No connection using FritzHosts")
     return numOfActiveClient
 
 # ÖV
@@ -266,7 +266,7 @@ def getMeteoForecast(geolocId):
     payload = {}
     headers = {
     'geolocationId': '',
-    'Authorization': 'Bearer vyzjrhkA2bYst3A4vpmxSMeHpyhy'
+    'Authorization': 'Bearer ' + str(token)
     }
 
     response = requests.request("GET", url, headers=headers, data=payload)
@@ -492,9 +492,6 @@ time.sleep(2)
 ##################################### test dynamic content
 
 logging.info("dynamic content")
-print("test")
-getWaterTemperatures()
-exit(-1)
 content = ContentHandler('h', 2)
 logging.info("2.Drawing on the horizontal image dynamic...")
 if is_raspberrypi():
@@ -549,7 +546,7 @@ for name, geolocId in areas.items():
     logging.info(forecast)
     rainPROBPERC_mm = "17-21h(%|mm): "
     for i in range(len(forecast['forecast']['60minutes'][17:21])):
-        rainPROBPERC_mm = rainPROBPERC_mm + " " + str(forecast['forecast']['60minutes'][i]['PROBPCP_PERCENT']) + "|" + str(forecast['forecast']['60minutes'][i]['RRR_MM'])
+        rainPROBPERC_mm = rainPROBPERC_mm + "; " + str(17+i) + "h:" + str(forecast['forecast']['60minutes'][i]['PROBPCP_PERCENT']) + "|" + str(forecast['forecast']['60minutes'][i]['RRR_MM'])
     c39 = content.appendContent({"col":2, "row":1, "blocktitle": "FORECAST", "content": "Name:"+name + " FC:" + rainPROBPERC_mm , "type": "radiobutton"})
 
 # NETWORK
@@ -562,7 +559,7 @@ else:
     piholestats = "down"
 
 numOfActiveClient = "-"
-numOfActiveClient = getFritzBoxActiveConnections("127.0.0.1",timeout=700)
+numOfActiveClient = getFritzBoxActiveConnections("192.168.178.1",timeout=700)
 content.appendContent({"col":2,"row":1, "blocktitle": "NETZWERK", "content": "NETZWERK","type":"title", "color":"black"})
 content.appendContent({"col":2,"row":1, "blocktitle": "NETZWERK", "content": "Clients: " + numOfActiveClient + " PiHoleStatus: " + piholestats, "type":"radiobutton", "color": "black"})
 from datetime import datetime
@@ -570,9 +567,9 @@ now = datetime.now()
 nowstr = datetime.strftime(now, "%d.%m.%Y %H:%M")
 c83 = content.appendContent(
     {"col": 2, "row": 1, "blocktitle": "LAST UPDATED", "content": "LAST UPDATED", "type": "title", "color": "black"})
-c83 = content.appendContent({"col": 2, "row": 2, "blocktitle": "LAST UPDATED", "content": str(nowstr), "type": "bulletpoint",
-     "color": "black"})
 
+c83 = content.appendContent(
+    {"col": 2, "row": 1, "blocktitle": "LAST UPDATED", "content": nowstr, "type": "radiobutton", "color": "black"})
 # build screen image
 rowheight = 24
 rowheightTitle = 28
@@ -598,14 +595,28 @@ for c in content.content:
             cnt_c1 += 1
             drawblack.text((coloffset[c['col']-1], cnt_c1*rowheight-rowheight), c['content'], font=font22, fill=0)
         else:
-            drawblack.text((coloffset[c['col']-1], cnt_c1*rowheight-rowheight), c['content'], font=font20, fill=0)
+            if len(c['content']) > 40:
+                drawblack.text((coloffset[c['col']-1], cnt_c1*rowheight-rowheight), c['content'][:40], font=font20, fill=0)
+                cnt_c1 += 1
+                drawblack.text((coloffset[c['col']-1], cnt_c1*rowheight-rowheight), c['content'][40:], font=font20, fill=0)
+            else:
+                drawblack.text((coloffset[c['col']-1], cnt_c1*rowheight-rowheight), c['content']
+                            , font=font20, fill=0)
         cnt_c1 = cnt_c1 + 1
     elif c['col'] == 2:
         if c['type'] == 'title':
             cnt_c2 += 1
             drawblack.text((coloffset[c['col']-1], cnt_c2*rowheight-rowheight), c['content'], font=font22, fill=0)
+
         else:
-            drawblack.text((coloffset[c['col']-1], cnt_c2*rowheight-rowheight), c['content'], font=font20, fill=0)
+            if len(c['content']) > 40:
+                drawblack.text((coloffset[c['col']-1], cnt_c2*rowheight-rowheight), c['content'][:40], font=font20, fill=0)
+                cnt_c2 += 1
+                drawblack.text((coloffset[c['col'] - 1], cnt_c2 * rowheight - rowheight), c['content'][40:], font=font20,
+                               fill=0)
+            else:
+                drawblack.text((coloffset[c['col'] - 1], cnt_c2 * rowheight - rowheight), c['content'],
+                               font=font20, fill=0)
         cnt_c2 = cnt_c2 + 1
 HRYimage = convertWhitePxToTransparent(HRYimage)
 h_d_img = combineLayers(HBlackimage, HRYimage)
@@ -619,9 +630,6 @@ from datetime import datetime
 now = datetime.now()
 nowstr = datetime.strftime(now, "%d.%m.%Y %H:%M")
 logging.info("605")
-"""c83 = content.appendContent(
-    {"col": 2, "row": 1, "blocktitle": "LAST UPDATED", "content": nowstr, "type": "radiobutton", "color": "black"})"""
-#drawblack.text((coloffset[c['col']-1], cnt_c2*rowheight-rowheight), c['content'], font=font22, fill=0)
 logging.info("607")
 from time import sleep
 sleep(1)
@@ -630,7 +638,10 @@ sleep(1)
 if is_raspberrypi():
     epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRYimage))
     logging.info("last")
-
+else:
+    v_img = combineLayers(HBlackimage, HRYimage)
+    v_img.show()
+    v_img.save("v_test.png", 'PNG')
 cnt = 0
 
 # vertical content
