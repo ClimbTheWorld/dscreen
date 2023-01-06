@@ -4,9 +4,21 @@ from __future__ import print_function
 import sys
 import os
 from warnings import catch_warnings
-
-#from nbformat import write
+import json
+import requests
 import logging
+import pprint
+import base64
+from datetime import datetime
+from time import sleep
+
+
+
+import time
+from PIL import Image, ImageDraw, ImageFont
+import traceback
+
+# Logging
 logging.basicConfig(level=logging.DEBUG)
 picdir = os.sep.join([os.path.dirname(os.path.dirname(os.path.realpath("test_dscreen.py"))), 'e-paper/RaspberryPi_JetsonNano/python/pic'])
 libdir = os.sep.join([os.path.dirname(os.path.dirname(os.path.realpath("test_dscreen.py"))),
@@ -15,14 +27,7 @@ print(picdir)
 print(libdir)
 if os.path.exists(libdir):
     sys.path.append(libdir)
-import pprint
-import base64
-#import pyyaml
-from datetime import datetime
 
-import time
-from PIL import Image, ImageDraw, ImageFont
-import traceback
 
 def is_raspberrypi():
     try:
@@ -31,10 +36,7 @@ def is_raspberrypi():
                 print("rpi");
                 return True
     except Exception: pass
-    return False
-if is_raspberrypi():
-    from waveshare_epd import epd5in83b_V2
-    logging.info("import waveshare")
+    return False    
 
 class EPaperDisplay:
     width = 0
@@ -108,30 +110,27 @@ def combineLayers(background, foreground):
 
 logging.info("Init and Clear")
 if is_raspberrypi():
+    from waveshare_epd import epd5in83b_V2
+    logging.info("import waveshare")
     epd = epd5in83b_V2.EPD()
     epd.init()
     epd.Clear()
-    #logging.info("Goto Sleep...")
-    print("114")
     time.sleep(1)
 else:
     # see below 493
     pass
 
-import json
-import requests
+
 # Wassertemperaturen
 ## Linth
 def getWaterTemperatures():
-
     staos = {"Linth":2104, "ReussLuzern":2152, "ReussSeedorf":2056}
     for k,v in staos.items():
         stao = k + ": "
         url = "https://api.existenz.ch/apiv1/hydro/latest?locations=" + str(v)
         payload={}
         headers = {}
-        try:
-            
+        try: 
             response = requests.request("GET", url, headers=headers, data=payload)
             if response.status_code == 200:
                 print(response.content)
@@ -141,7 +140,7 @@ def getWaterTemperatures():
                     staos[k] += staos[k].join(str(p["par"]) + ":" + str(p["val"]) + ", ")
                     print(staos)
             else:
-                print("connection error")
+                print("api.existenz.ch connection error")
             print(stao[:-2])
         except:
             logging.error("api.existenz.ch connection error")
@@ -229,7 +228,6 @@ LinthWeesen: 2104
 WalenseeMurg: 2118"""
 waterfun = {"ReussSeedorf":2056, "ReussLuzern":2152, "LimmatHardbrücke":2099, "LinthWeesen":2104, "Murg":2118}
 def getWaterfun(timeout):
-    import requests
 
     url = "https://api.existenz.ch/apiv1/hydro/latest?locations="
     hotspots = []
@@ -249,7 +247,7 @@ def getWaterfun(timeout):
             logging.info(hotspot)
             hotspots.append(hotspot[:-2])
     except:
-        logging.error("No connection")
+        logging.error("No connection to api.existenz.ch")
         return hotspots
     return hotspots
 
@@ -383,10 +381,8 @@ def getCalendarEvents():
 
 
     except HttpError as error:
-        logging.error('An error occurred: %s' % error)
+        logging.error('Google Calendar:An error occurred: %s' % error)
     return eventlist
-
-#print(response.text)
 
 class ContentHandler():
     content = []
@@ -500,6 +496,7 @@ if is_raspberrypi():
     epd = epd
     logging.info("is raspberry pi")
 else:
+    # for debugging purpose
     epd = EPaperDisplay(2, 648, 480, 0)
 #LBlackimage = Image.new('1', (epd.width, epd.height), 255)
 #LRYimage = Image.new('1', (epd.width, epd.height), 255)
@@ -510,6 +507,9 @@ HRYimage = Image.new('1', (epd.width, epd.height), 255)
 drawblack = ImageDraw.Draw(HBlackimage)
 drawry = ImageDraw.Draw(HRYimage)
 time.sleep(2)
+
+#region Collect content and append to blocks
+# Get Calendar
 logging.info("505")
 c1 = content.appendContent(
     {"col": 1, "row": 1, "blocktitle": "HEUTE", "content": "HEUTE", "type": "title", "color": "black"})
@@ -517,12 +517,7 @@ calendarEvents = getCalendarEvents()
 for event in calendarEvents:
     text = event
     content.appendContent({"col": 1, "row": 1, "blocktitle": "HEUTE", "content": str(text), "type": "bulletpoint", "color": "black"})
-
-c2 = content.appendContent(
-    {"col": 1, "row": 2, "blocktitle": "HEUTE", "content": "Post eingeschrieben abholen", "type": "bulletpoint",
-     "color": "black"})
-#c3 = content.appendContent(
-#    {"col": 1, "row": 1, "blocktitle": "GEBURI", "content": "GEBURI", "type": "title", "color": "black"})
+# Get Waterfun
 hotspots = getWaterfun(1700)
 c38 = content.appendContent(
             {"col": 2, "row": 1, "blocktitle": "Water", "content": "WATER m^3/s | m.ü.M. | °C", "type": "title", "color": "black"})
@@ -530,14 +525,14 @@ for hotspot in hotspots:
     if hotspot != "":
             c38c = content.appendContent(
             {"col": 2, "row": 1, "blocktitle": "Water", "content": hotspot, "type": "bulletpoint", "color": "black"})
-    
+# Get Bus departme   
 stationboardlist = getStationboard("Kriens, Himmelrichstrasse", 8589714)
 c4 = content.appendContent({"col": 1, "row": 3, "blocktitle": "FAHRPLAN", "content": "FAHRPLAN", "type": "title"})
 
 busnr = 0
 for bus in stationboardlist:
     content.appendContent({"col": 1, "row": 1, "blocktitle": "FAHRPLAN", "content": str(bus), "type": "bulletpoint", "color": "black"})
-# Forecast of weather
+# Get Forecast of weather
 areas = {"Denise1":"47.4001,8.5415","Denise2":"47.1139,9.2551", "Lukas":"47.0319,8.2827"}
 content.appendContent({"col": 2, "row": 1, "blocktitle": "FORECAST", "content": "FORECAST", "type": "title"})
 for name, geolocId in areas.items():
@@ -551,7 +546,7 @@ for name, geolocId in areas.items():
         rainPROBPERC_mm = rainPROBPERC_mm + "; " + str(17+i) + "h:" + str(forecast['forecast']['60minutes'][i]['PROBPCP_PERCENT']) + "|" + str(forecast['forecast']['60minutes'][i]['RRR_MM'])
     c39 = content.appendContent({"col":2, "row":1, "blocktitle": "FORECAST", "content": "Name:"+name + " FC:" + rainPROBPERC_mm , "type": "radiobutton"})
 
-# NETWORK
+# Get PiHole
 piholestats = getPiHole("127.0.0.1", 1000)
 
 
@@ -559,11 +554,12 @@ if piholestats == 'enabled':
     piholestats = "up"
 else:
     piholestats = "down"
-
+# Get Number of active clients
 numOfActiveClient = "-"
 numOfActiveClient = getFritzBoxActiveConnections("192.168.178.1",timeout=700)
 content.appendContent({"col":2,"row":1, "blocktitle": "NETZWERK", "content": "NETZWERK","type":"title", "color":"black"})
 content.appendContent({"col":2,"row":1, "blocktitle": "NETZWERK", "content": "Clients: " + numOfActiveClient + "| PiHoleStatus: " + piholestats, "type":"radiobutton", "color": "black"})
+# Get LAST UPDATED
 from datetime import datetime
 now = datetime.now()
 nowstr = datetime.strftime(now, "%d.%m.%Y %H:%M")
@@ -572,12 +568,14 @@ c83 = content.appendContent(
 
 c83 = content.appendContent(
     {"col": 2, "row": 1, "blocktitle": "LAST UPDATED", "content": nowstr, "type": "radiobutton", "color": "black"})
+#endregion
+
+#region Write screen image from content
 # build screen image
 rowheight = 24
 rowheightTitle = 28
 
-
-# dynamic displayhorizontalcontent
+# Write dynamic content to displayhorizontalcontent
 logging.info("num-of-entries:%s", content.content.__len__())
 logging.info("content:%s", content.__str__())
 # create vertical image from dynamic content
@@ -591,7 +589,6 @@ cnt_c1 = 1
 cnt_c2 = 1
 coloffset = [2, 310]
 for c in content.content:
-    #drawblack.text((epd.coloffset[c['col']-1], cnt*rowheight), c['content'], font=font22, fill=0)
     if c['col'] == 1:
         if c['type'] == 'title':
             cnt_c1 += 1
@@ -625,21 +622,13 @@ h_d_img = combineLayers(HBlackimage, HRYimage)
 if is_raspberrypi():
     #epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRYimage))
     logging.info("display {}".format(type(epd)))
-import datetime
-#from datetime import strftime
-logging.info("600")
-from datetime import datetime
 now = datetime.now()
 nowstr = datetime.strftime(now, "%d.%m.%Y %H:%M")
-logging.info("605")
-logging.info("607")
-from time import sleep
 sleep(1)
 #if not is_raspberrypi():
 #    h_d_img.show()
 if is_raspberrypi():
     epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRYimage))
-    logging.info("last")
 else:
     v_img = combineLayers(HBlackimage, HRYimage)
     v_img.show()
@@ -661,3 +650,4 @@ v_d_img = combineLayers(LBlackimage, LRYimage)
 v_d_img.show()
 logging.info("content:%s", content.__str__())
 """
+#endregion
