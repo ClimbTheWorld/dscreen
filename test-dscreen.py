@@ -11,7 +11,7 @@ import pprint
 import base64
 from datetime import datetime
 from time import sleep
-
+from dotenv import dotenv_values
 
 
 import time
@@ -120,11 +120,13 @@ else:
     # see below 493
     pass
 
+cred = dotenv_values(".dscreen-cred")
+dscreen_config = dotenv_values(".dscreen-config")
 
 # Wassertemperaturen
 ## Linth
-def getWaterTemperatures():
-    staos = {"Linth":2104, "ReussLuzern":2152, "ReussSeedorf":2056}
+def getWaterTemperatures(loc_ids):
+    staos = loc_ids
     for k,v in staos.items():
         stao = k + ": "
         url = "https://api.existenz.ch/apiv1/hydro/latest?locations=" + str(v)
@@ -165,11 +167,11 @@ def getPiHole(host, timeout):
         logging.error("No connection to PiHole")
         return "no connection"
 
-def getFritzBoxActiveConnections(host, timeout):
+def getFritzBoxActiveConnections(host, password, timeout):
     from fritzconnection.lib.fritzhosts import FritzHosts
     numOfActiveClient = "-"
     try:
-        fh = FritzHosts(address=host, password='grief4210', use_tls=True,timeout=3000)
+        fh = FritzHosts(address=host, password=password, use_tls=True,timeout=3000)
         fh_hostsInfo = fh.get_hosts_info()
         testwlanfilter = filter(lambda h : (h['status'] == True and (h['interface_type'] == '802.11')), fh_hostsInfo)
         testwlanlist = list(testwlanfilter)
@@ -226,9 +228,8 @@ ReussLuzern: 2152
 LimmatHardbrück: 2099
 LinthWeesen: 2104
 WalenseeMurg: 2118"""
-waterfun = {"ReussSeedorf":2056, "ReussLuzern":2152, "LimmatHardbrücke":2099, "LinthWeesen":2104, "Murg":2118}
-def getWaterfun(timeout):
-
+def getWaterfun(waterfun_loc_ids, timeout):
+    waterfun = waterfun_loc_ids
     url = "https://api.existenz.ch/apiv1/hydro/latest?locations="
     hotspots = []
     try:
@@ -295,7 +296,7 @@ def getMeteoToken():
     base64enc = base64.b64encode('data to be encoded'.encode('ascii'))
     payload = {}
     headers = {
-        'Authorization': 'Basic aGZvNUFxRkgydlRNVjQ5cHNUZ2hsNFFJaHNHV21oYko6NTNab0JKMkxyTE04YWJYcw==',
+        'Authorization': 'Basic ' + cred['srfmeteo_auth'],
         'Cache-Control': 'no-cache',
         'Content-Length': '0',
         'Postman-Token': '24264e32-2de0-f1e3-f3f8-eab014bb6d76'
@@ -343,18 +344,18 @@ def getCalendarEvents():
     # time.
     from google.oauth2 import service_account
     SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
-    SERVICE_ACCOUNT_FILE = 'credentials.json'
+    #SERVICE_ACCOUNT_FILE = 'credentials.json'
     from google.cloud import storage
-
-    credentials = service_account.Credentials.from_service_account_file(
-            SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    
+    credentials = service_account.Credentials.from_service_account_info(
+            json.loads(cred['google_calendar_credentials']))
     try:
         service = build('calendar', 'v3', credentials=credentials)
 
         # Call the Calendar API
         now = datetime.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
         print('Getting the upcoming 10 events')
-        events_result = service.events().list(calendarId='lukaskempf@gmail.com', timeMin=now,
+        events_result = service.events().list(calendarId=cred['google_calendar_id'], timeMin=now,
                                             maxResults=10, singleEvents=True,
                                             orderBy='startTime').execute()
         events = events_result.get('items', [])
@@ -456,9 +457,6 @@ font20 = ImageFont.truetype(os.path.join(picdir, 'calibri.ttf'), 18)
 # Block oben links
 drawblack.text((2, 0), 'HEUTE', font=font22, fill=0)
 drawblack.text((2, 27), 'Post eingeschrieben abholen', font=font22, fill=0)
-drawblack.text((2, 52), 'Denise ob ich am WE mit ihr', font=font22, fill=0)
-drawblack.text((2, 77), 'OLG 17.30', font=font22, fill=0)
-drawblack.text((2, 102), 'Karton', font=font22, fill=0)
 
 # Block mitte links
 drawblack.text((2, 132), 'GEBURI', font=font22, fill=0)
@@ -486,7 +484,7 @@ v_img.save("v_test.png", 'PNG')
 # epd.display(epd.getbuffer(LBlackimage), epd.getbuffer(LRYimage))
 time.sleep(2)
 """
-
+#endregion
 ##################################### test dynamic content
 
 logging.info("dynamic content")
@@ -510,7 +508,6 @@ time.sleep(2)
 
 #region Collect content and append to blocks
 # Get Calendar
-logging.info("505")
 c1 = content.appendContent(
     {"col": 1, "row": 1, "blocktitle": "HEUTE", "content": "HEUTE", "type": "title", "color": "black"})
 calendarEvents = getCalendarEvents()
@@ -518,7 +515,7 @@ for event in calendarEvents:
     text = event
     content.appendContent({"col": 1, "row": 1, "blocktitle": "HEUTE", "content": str(text), "type": "bulletpoint", "color": "black"})
 # Get Waterfun
-hotspots = getWaterfun(1700)
+hotspots = getWaterfun(json.loads(dscreen_config['waterfun_loc_ids']), 1700)
 c38 = content.appendContent(
             {"col": 2, "row": 1, "blocktitle": "Water", "content": "WATER m^3/s | m.ü.M. | °C", "type": "title", "color": "black"})
 for hotspot in hotspots:
@@ -526,14 +523,14 @@ for hotspot in hotspots:
             c38c = content.appendContent(
             {"col": 2, "row": 1, "blocktitle": "Water", "content": hotspot, "type": "bulletpoint", "color": "black"})
 # Get Bus departme   
-stationboardlist = getStationboard("Kriens, Himmelrichstrasse", 8589714)
+stationboardlist = getStationboard(dscreen_config['sbb_stationboard_station'], int(dscreen_config['sbb_stationboard_id']))
 c4 = content.appendContent({"col": 1, "row": 3, "blocktitle": "FAHRPLAN", "content": "FAHRPLAN", "type": "title"})
 
 busnr = 0
 for bus in stationboardlist:
     content.appendContent({"col": 1, "row": 1, "blocktitle": "FAHRPLAN", "content": str(bus), "type": "bulletpoint", "color": "black"})
 # Get Forecast of weather
-areas = {"Denise1":"47.4001,8.5415","Denise2":"47.1139,9.2551", "Lukas":"47.0319,8.2827"}
+areas = json.loads(dscreen_config['srfmeteo_loc_ids'])
 content.appendContent({"col": 2, "row": 1, "blocktitle": "FORECAST", "content": "FORECAST", "type": "title"})
 for name, geolocId in areas.items():
     forecast = getMeteoForecast(geolocId)
@@ -547,7 +544,7 @@ for name, geolocId in areas.items():
     c39 = content.appendContent({"col":2, "row":1, "blocktitle": "FORECAST", "content": "Name:"+name + " FC:" + rainPROBPERC_mm , "type": "radiobutton"})
 
 # Get PiHole
-piholestats = getPiHole("127.0.0.1", 1000)
+piholestats = getPiHole(dscreen_config['pihole_ip'], 1000)
 
 
 if piholestats == 'enabled':
@@ -556,7 +553,7 @@ else:
     piholestats = "down"
 # Get Number of active clients
 numOfActiveClient = "-"
-numOfActiveClient = getFritzBoxActiveConnections("192.168.178.1",timeout=700)
+numOfActiveClient = getFritzBoxActiveConnections(dscreen_config['router_host'], cred['router_password'], timeout=700)
 content.appendContent({"col":2,"row":1, "blocktitle": "NETZWERK", "content": "NETZWERK","type":"title", "color":"black"})
 content.appendContent({"col":2,"row":1, "blocktitle": "NETZWERK", "content": "Clients: " + numOfActiveClient + "| PiHoleStatus: " + piholestats, "type":"radiobutton", "color": "black"})
 # Get LAST UPDATED
@@ -572,8 +569,8 @@ c83 = content.appendContent(
 
 #region Write screen image from content
 # build screen image
-rowheight = 24
-rowheightTitle = 28
+rowheight = int(dscreen_config['dscreen_rowheightText'])
+rowheightTitle = int(dscreen_config['dscreen_rowheightTitle'])
 
 # Write dynamic content to displayhorizontalcontent
 logging.info("num-of-entries:%s", content.content.__len__())

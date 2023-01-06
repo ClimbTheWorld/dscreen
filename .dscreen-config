@@ -1,0 +1,11 @@
+# dscreen config file: .dscreen-config
+waterfun_loc_ids = {"ReussSeedorf":2056, "ReussLuzern":2152, "LimmatHardbrücke":2099, "LinthWeesen":2104, "Murg":2118}
+waterTemp_loc_ids = {"Linth":2104, "ReussLuzern":2152, "ReussSeedorf":2056}
+sbb_stationboard_station = "Kriens, Himmelrichstrasse"
+sbb_stationboard_id = 8589714
+srfmeteo_loc_ids = {"Denise1":"47.4001,8.5415","Denise2":"47.1139,9.2551", "Lukas":"47.0319,8.2827"}
+pihole_ip = "127.0.0.1"
+router_host = "192.168.178.1"
+dscreen_orientation = "horizontal"
+dscreen_rowheightText = 24
+dscreen_rowheightTitle = 28
