@@ -175,7 +175,7 @@ def getFritzBoxActiveConnections(host, password, timeout):
         fh_hostsInfo = fh.get_hosts_info()
         testwlanfilter = filter(lambda h : (h['status'] == True and (h['interface_type'] == '802.11')), fh_hostsInfo)
         testwlanlist = list(testwlanfilter)
-        testethlist=list(filter(lambda h : (h['status'] == True and (h['interface_type'] == 'lan')), fh_hostsInfo))
+        testethlist=list(filter(lambda h : (h['status'] == True and (h['interface_type'] == 'Ethernet')), fh_hostsInfo))
         numOfActiveClient = "w:" + str(len(testwlanlist))+ \
                         "|e:" + str(len(testethlist))
     except Exception:
@@ -547,7 +547,7 @@ for name, geolocId in areas.items():
 piholestats = getPiHole(dscreen_config['pihole_ip'], 1000)
 
 
-if piholestats['status'] == 'enabled':
+if piholestats != 'no connection':
     piholestats = "up"
 else:
     piholestats = "down"
