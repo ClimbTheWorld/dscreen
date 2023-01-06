@@ -149,7 +149,7 @@ def getWaterTemperatures(loc_ids):
     return staos
 # PiHole stats request
 def getPiHole(host, timeout):
-    url = host + "/admin/api.php"
+    url = host + "/admin/api.php?summary"
 
     payload = {}
     headers = {}
@@ -495,7 +495,7 @@ if is_raspberrypi():
     logging.info("is raspberry pi")
 else:
     # for debugging purpose
-    epd = EPaperDisplay(2, 648, 480, 0)
+    epd = EPaperDisplay(json.loads(dscreen_config['dscreen_col_config'])["numOfCols"], json.loads(dscreen_config["e_paper_resolution"])[0], json.loads(dscreen_config["e_paper_resolution"])[1], int(dscreen_config['dscreen_orientation']))
 #LBlackimage = Image.new('1', (epd.width, epd.height), 255)
 #LRYimage = Image.new('1', (epd.width, epd.height), 255)
 #drawblack = ImageDraw.Draw(LBlackimage)
@@ -547,7 +547,7 @@ for name, geolocId in areas.items():
 piholestats = getPiHole(dscreen_config['pihole_ip'], 1000)
 
 
-if piholestats == 'enabled':
+if piholestats['status'] == 'enabled':
     piholestats = "up"
 else:
     piholestats = "down"
@@ -580,11 +580,11 @@ if is_raspberrypi():
     epd = epd
     logging.info("is raspberry pi")
 else:
-    epd = EPaperDisplay(2, 648, 480, 0)
+    epd = EPaperDisplay(json.loads(dscreen_config['dscreen_col_config'])["numOfCols"], json.loads(dscreen_config["e_paper_resolution"])[0], json.loads(dscreen_config["e_paper_resolution"])[1], int(dscreen_config['dscreen_orientation']))
 
 cnt_c1 = 1
 cnt_c2 = 1
-coloffset = [2, 310]
+coloffset = [json.loads(dscreen_config['dscreen_col_config'])["colXoffset"][0], json.loads(dscreen_config['dscreen_col_config'])['colXoffset'][1]]
 for c in content.content:
     if c['col'] == 1:
         if c['type'] == 'title':
