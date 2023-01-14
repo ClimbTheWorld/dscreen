@@ -1,7 +1,7 @@
 ﻿# dscreen  
 This project is a data viewer which collects data from different source using REST api and shows it on a e-paper display.  
 ## sample content
-test  
+![verticalexample](v_example.png "verticalexample")
 
 # content
 ## dataflow
@@ -24,6 +24,4 @@ waveshare sample project https://github.com/waveshare/e-Paper
 ### Links
 #### e-Paper
 https://www.waveshare.com/w/upload/8/89/5.83inch-e-paper-hat-user-manual-en.pdf  
-https://www.waveshare.com/w/upload/8/89/5.83inch-e-paper-hat-user-manual-en.pdf  
 https://www.waveshare.com/wiki/5.83inch_e-Paper_HAT_(B)  
-

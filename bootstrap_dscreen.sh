@@ -25,7 +25,7 @@ else
   pip install -r requirements.txt
   crontab -l > cron_dscreen
   echo "SHELL=/bin/bash \
-0,24,27,30 5,6,7,8,* * * * cd /home/pi/e-paper && python test-dscreen.py 2&1 >logger" >> cron_dscreen
+0,24 * * * * cd /home/pi/e-paper && python dscreen.py 2&1 >logger" >> cron_dscreen
   crontab cron_dscreen
   rm -f cron_dscreen
   
