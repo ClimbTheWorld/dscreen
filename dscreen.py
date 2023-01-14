@@ -123,7 +123,7 @@ else:
 cred = dotenv_values(".dscreen-cred")
 dscreen_config = dotenv_values(".dscreen-config")
 
-# Wassertemperaturen
+# Wassertemperatures
 ## Linth
 def getWaterTemperatures(loc_ids):
     staos = loc_ids
@@ -182,7 +182,7 @@ def getFritzBoxActiveConnections(host, password, timeout):
         logging.error("{}: No connection using FritzHosts")
     return numOfActiveClient
 
-# ÖV
+# SBB Departures from location
 ## Himmelrichstrasse
 def getStationboard(station, id):
     url = "http://transport.opendata.ch/v1/stationboard?station="+station+"&limit=3&id="+str(id)
@@ -298,8 +298,7 @@ def getMeteoToken():
     headers = {
         'Authorization': 'Basic ' + cred['srfmeteo_auth'],
         'Cache-Control': 'no-cache',
-        'Content-Length': '0',
-        'Postman-Token': '24264e32-2de0-f1e3-f3f8-eab014bb6d76'
+        'Content-Length': '0'
     }
 
     response = requests.request("POST", url, headers=headers, data=payload)
@@ -339,12 +338,12 @@ def getCalendarEvents():
         In the "Calendar Address" section of the screen, you will see your Calendar ID.
     4. Add service account email to calendar which you want to have access to. Go to gmail.com>Calendar>>Settings>Settings for my calendars>Choose calendar>Calendar settings>Share with specific people>Add service account email here
     """
-    # The file token.json stores the user's access and refresh tokens, and is
+    # The file dscreen-cred.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
     # time.
     from google.oauth2 import service_account
     SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
-    #SERVICE_ACCOUNT_FILE = 'credentials.json'
+    #SERVICE_ACCOUNT_FILE = 'dscreen-cred.json'
     from google.cloud import storage
     
     credentials = service_account.Credentials.from_service_account_info(
@@ -402,20 +401,6 @@ class ContentHandler():
 
     def appendContent(self, newentry):
         hasBlockTitle = 0
-        #for block in self.content:
-        #    if block['type'] == 'title':
-        #        if block['blocktitle'] == newentry['blocktitle']:
-        #            logging.info("blocktitle: already there!")
-        #            return -1
-        #        else:
-        #            self.content.append(newentry)
-        #            return 0
-        #    elif block['type'] == "content":
-        #        self.content.append(block)
-        #        return 1
-        #    else:
-        #        logging.info("block has not type=title")
-        #        return -2
         contentLen = len(self.content)
         self.content.append(newentry)
         if contentLen < len(self.content):
@@ -430,22 +415,10 @@ class ContentHandler():
 
 
 
-# region VerticalImage
-# Drawing on the Vertical image
-"""
-logging.info("2.Drawing on the Vertical image...")
-epd = EPaperDisplay(1, 480, 648, 1)
-LBlackimage = Image.new('1', (epd.width, epd.height), 255)
-LRYimage = Image.new('1', (epd.width, epd.height), 255)
-drawblack = ImageDraw.Draw(LBlackimage)
-drawry = ImageDraw.Draw(LRYimage)
-"""
-
 
 c2 = -3
 c3 = -3
 # try:
-#logging.info("epd5in83b_V2 Demo")
 
 # Drawing on the image
 logging.info("Drawing")
@@ -453,37 +426,6 @@ logging.info(picdir)
 font22 = ImageFont.truetype(os.path.join(picdir, 'calibrib.ttf'), 24)
 font20 = ImageFont.truetype(os.path.join(picdir, 'calibri.ttf'), 18)
 
-"""
-# Block oben links
-drawblack.text((2, 0), 'HEUTE', font=font22, fill=0)
-drawblack.text((2, 27), 'Post eingeschrieben abholen', font=font22, fill=0)
-
-# Block mitte links
-drawblack.text((2, 132), 'GEBURI', font=font22, fill=0)
-drawblack.text((2, 159), '29.6. Peter', font=font22, fill=0)
-
-# Block unten links
-drawblack.text((2, 186), 'REGENJACKE', font=font22, fill=0)
-drawblack.text((2, 213), 'Ab16.0070% ', font=font22, fill=0)
-
-# drawblack.text((20, 50), u'微雪电子', font = font20, fill = 0)
-# drawblack.line((10, 90, 60, 140), fill = 0)
-# drawblack.line((60, 90, 10, 140), fill = 0)
-# drawblack.rectangle((10, 90, 60, 140), outline = 0)
-# drawry.line((95, 90, 95, 140), fill = 0)
-# drawry.line((70, 115, 120, 115), fill = 0)
-# drawry.arc((70, 90, 120, 140), 0, 360, fill = 0)
-# drawry.rectangle((10, 150, 60, 200), fill = 0)
-# drawry.chord((70, 150, 120, 200), 0, 360, fill = 0)
-# LBlackimage.save("v_blackimage.png", "PNG")
-# LRYimage.save("v_hryimage.png", "PNG")
-LRYimage = convertWhitePxToTransparent(LRYimage)
-v_img = combineLayers(LBlackimage, LRYimage)
-#v_img.show()
-v_img.save("v_test.png", 'PNG')
-# epd.display(epd.getbuffer(LBlackimage), epd.getbuffer(LRYimage))
-time.sleep(2)
-"""
 #endregion
 ##################################### test dynamic content
 
@@ -632,20 +574,4 @@ else:
     v_img.show()
     v_img.save("v_test.png", 'PNG')
 cnt = 0
-
-# vertical content
-"""
-vertical_content = content.content
-for c in vertical_content:
-    c["col"]=1
-    if c['type']=='title':
-        drawblack.text((epd.coloffset[c['col']-1], cnt*rowheight), c['content'], font=font22, fill=0)
-    else:
-        drawblack.text((epd.coloffset[c['col']-1], cnt*rowheight), c['content'], font=font22, fill=0)
-    cnt=cnt+1
-LRYimage = convertWhitePxToTransparent(LRYimage)
-v_d_img = combineLayers(LBlackimage, LRYimage)
-v_d_img.show()
-logging.info("content:%s", content.__str__())
-"""
 #endregion
