@@ -12,11 +12,12 @@ google-resumable-media==2.3.3
 googleapis-common-protos==1.56.3
 gpiozero==1.6.2
 nbformat==5.4.0
+numpy
 pickleshare==0.7.5
 Pillow==8.1.2
 ptvsd==4.3.2
 pyserial==3.5b0
-pysmbc==1.0.23
+#pysmbc==1.0.23
 python-dotenv==0.21.0
 requests==2.25.1
 RPi.GPIO==0.7.0
