@@ -1,0 +1,215 @@
+[
+  {
+    "col": 1,
+    "row": 1,
+    "blocktitle": "CALENDAR EVENTS",
+    "content": "CALENDAR EVENTS",
+    "type": "title",
+    "color": "black"
+  },
+  {
+    "col": 1,
+    "row": 1,
+    "blocktitle": "CALENDAR EVENTS",
+    "content": "17.01 19:00 Choir",
+    "type": "bulletpoint",
+    "color": "black"
+  },
+  {
+    "col": 1,
+    "row": 1,
+    "blocktitle": "CALENDAR EVENTS",
+    "content": "18.01          Buy food",
+    "type": "bulletpoint",
+    "color": "black"
+  },
+  {
+    "col": 1,
+    "row": 1,
+    "blocktitle": "CALENDAR EVENTS",
+    "content": "18.01 18:00 Dinner",
+    "type": "bulletpoint",
+    "color": "black"
+  },
+  {
+    "col": 1,
+    "row": 1,
+    "blocktitle": "CALENDAR EVENTS",
+    "content": "20.01 07:00 Paper",
+    "type": "bulletpoint",
+    "color": "black"
+  },
+  {
+    "col": 1,
+    "row": 1,
+    "blocktitle": "CALENDAR EVENTS",
+    "content": "24.01 19:00 Choir",
+    "type": "bulletpoint",
+    "color": "black"
+  },
+  {
+    "col": 1,
+    "row": 1,
+    "blocktitle": "CALENDAR EVENTS",
+    "content": "25.01          Snowboarding",
+    "type": "bulletpoint",
+    "color": "black"
+  },
+  {
+    "col": 1,
+    "row": 1,
+    "blocktitle": "CALENDAR EVENTS",
+    "content": "27.01 18:00 Concert",
+    "type": "bulletpoint",
+    "color": "black"
+  },
+  {
+    "col": 1,
+    "row": 1,
+    "blocktitle": "CALENDAR EVENTS",
+    "content": "31.01 19:00 Choir",
+    "type": "bulletpoint",
+    "color": "black"
+  },
+  {
+    "col": 1,
+    "row": 1,
+    "blocktitle": "CALENDAR EVENTS",
+    "content": "01.02          Meeting",
+    "type": "bulletpoint",
+    "color": "black"
+  },
+  {
+    "col": 1,
+    "row": 1,
+    "blocktitle": "CALENDAR EVENTS",
+    "content": "07.02 18:00 Choir bus 18:45",
+    "type": "bulletpoint",
+    "color": "black"
+  },
+  {
+    "col": 2,
+    "row": 1,
+    "blocktitle": "Water",
+    "content": "WATER m^3/s | m.a.S.l. | C",
+    "type": "title",
+    "color": "black"
+  },
+  {
+    "col": 2,
+    "row": 1,
+    "blocktitle": "Water",
+    "content": "ReussSeedorf: 10.13 | 437.06 | 5.45 ",
+    "type": "bulletpoint",
+    "color": "black"
+  },
+  {
+    "col": 2,
+    "row": 1,
+    "blocktitle": "Water",
+    "content": "ReussLuzern: 54.05 | 431.02 | 7.25 ",
+    "type": "bulletpoint",
+    "color": "black"
+  },
+  {
+    "col": 2,
+    "row": 1,
+    "blocktitle": "Water",
+    "content": "LimmatHardbruecke: 87.87 | 400.27 ",
+    "type": "bulletpoint",
+    "color": "black"
+  },
+  {
+    "col": 2,
+    "row": 1,
+    "blocktitle": "Water",
+    "content": "LinthWeesen: 31.25 | 418.29 | 7.12 ",
+    "type": "bulletpoint",
+    "color": "black"
+  },
+  {
+    "col": 2,
+    "row": 1,
+    "blocktitle": "Water",
+    "content": "Murg: 418.56 ",
+    "type": "bulletpoint",
+    "color": "black"
+  },
+  {
+    "col": 1,
+    "row": 3,
+    "blocktitle": "CONNECTIONS",
+    "content": "CONNECTIONS",
+    "type": "title"
+  },
+  {
+    "col": 1,
+    "row": 1,
+    "blocktitle": "CONNECTIONS",
+    "content": "H...-Trainstation: 6:47:00",
+    "type": "bulletpoint",
+    "color": "black"
+  },
+  {
+    "col": 1,
+    "row": 1,
+    "blocktitle": "CONNECTIONS",
+    "content": "H...-City: 6:53:00",
+    "type": "bulletpoint",
+    "color": "black"
+  },
+  {
+    "col": 1,
+    "row": 1,
+    "blocktitle": "CONNECTIONS",
+    "content": "H...-Trainstation: 7:46:00",
+    "type": "bulletpoint",
+    "color": "black"
+  },
+  {
+    "col": 2,
+    "row": 1,
+    "blocktitle": "FORECAST",
+    "content": "FORECAST",
+    "type": "title"
+  },
+  {
+  	"col": 2,
+  	"row": 1,
+  	"blocktitle": "FORECAST",
+    "content": "Workplace:FC: 17-21h(%|mm): 17h(82|0.1);18h(83|0.1);19h(83|0.1);20h(83|0.1);",
+    "type": "bulletpoint"
+  },
+  {
+    "col": 2,
+    "row": 1,
+    "blocktitle": "NETWORK",
+    "content": "NETWORK",
+    "type": "title",
+    "color": "black"
+  },
+  {
+    "col": 2,
+    "row": 1,
+    "blocktitle": "NETWORK",
+    "content": "Clients: w:1|e:1| PiHoleStatus: up",
+    "type": "radiobutton",
+    "color": "black"
+  },
+  {
+    "col": 2,
+    "row": 1,
+    "blocktitle": "LAST UPDATED",
+    "content": "LAST UPDATED",
+    "type": "title",
+    "color": "black"
+  },
+  {
+    "col": 2,
+    "row": 1,
+    "blocktitle": "LAST UPDATED",
+    "content": "14.01.2023 16:43",
+    "type": "radiobutton",
+    "color": "black"
+  }
+]
